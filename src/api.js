@@ -33,7 +33,10 @@ export const api = {
   getRestaurant: (slug) => apiCall(`/restaurants/${slug}`, { auth: false }),
 
   // Menu
-  getCategories: () => apiCall('/categories', { auth: false }),
+  getCategories: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiCall(`/categories${query ? `?${query}` : ''}`, { auth: false });
+  },
   getMenu: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return apiCall(`/menu${query ? `?${query}` : ''}`, { auth: false });

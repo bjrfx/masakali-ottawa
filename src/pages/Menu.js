@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Search, Filter, ChefHat, Flame, Leaf } from 'lucide-react';
+import { Search, ChefHat, Flame, Leaf, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import api from '../api';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
@@ -26,38 +26,101 @@ function getItemImageUrl(item) {
 }
 
 export default function Menu() {
+  const [restaurants, setRestaurants] = useState([]);
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState('stittsville');
   const [search, setSearch] = useState('');
   const [vegOnly, setVegOnly] = useState(false);
+  const [spiceFilter, setSpiceFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('default');
   const [loading, setLoading] = useState(true);
   const [brokenImages, setBrokenImages] = useState({});
 
   useEffect(() => {
-    Promise.all([api.getCategories(), api.getMenu()])
-      .then(([cats, items]) => {
-        setCategories(cats);
-        setMenuItems(items);
-        setLoading(false);
-      })
-      .catch(err => { console.error(err); setLoading(false); });
+    api.getRestaurants()
+      .then((data) => setRestaurants(data || []))
+      .catch((err) => console.error(err));
   }, []);
 
-  const filteredItems = menuItems.filter(item => {
-    if (activeCategory && item.category_id !== activeCategory) return false;
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      api.getCategories({ branch: selectedLocation }),
+      api.getMenu({ branch: selectedLocation }),
+    ])
+      .then(([cats, items]) => {
+        setCategories(cats || []);
+        setMenuItems(items || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        setCategories([]);
+        setMenuItems([]);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    setActiveCategory('all');
+    setSearch('');
+    setVegOnly(false);
+    setSpiceFilter('all');
+    setSortBy('default');
+    setBrokenImages({});
+  }, [selectedLocation]);
+
+  const locationOptions = [
+    { slug: 'stittsville', label: 'Stittsville' },
+    { slug: 'wellington', label: 'Wellington' },
+  ];
+
+  const availableLocations = locationOptions.filter((option) => (
+    restaurants.some((restaurant) => String(restaurant?.slug || '').toLowerCase() === option.slug)
+  ));
+
+  const visibleLocations = availableLocations.length ? availableLocations : locationOptions;
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredItems = menuItems.filter((item) => {
+    if (activeCategory !== 'all' && String(item.category_id) !== String(activeCategory)) return false;
     if (vegOnly && !item.is_vegetarian) return false;
-    if (search && !item.name.toLowerCase().includes(search.toLowerCase()) && !item.description?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (spiceFilter !== 'all' && String(item.spice_level || 'medium') !== spiceFilter) return false;
+    if (
+      normalizedSearch
+      && !String(item.name || '').toLowerCase().includes(normalizedSearch)
+      && !String(item.description || '').toLowerCase().includes(normalizedSearch)
+    ) return false;
     return true;
+  }).sort((left, right) => {
+    if (sortBy === 'name_asc') return String(left.name || '').localeCompare(String(right.name || ''));
+    if (sortBy === 'name_desc') return String(right.name || '').localeCompare(String(left.name || ''));
+    if (sortBy === 'veg_first') return Number(Boolean(right.is_vegetarian)) - Number(Boolean(left.is_vegetarian));
+    return 0;
   });
 
+  const categoryCounts = categories.reduce((acc, category) => {
+    acc[String(category.id)] = filteredItems.filter((item) => String(item.category_id) === String(category.id)).length;
+    return acc;
+  }, {});
+
   const groupedItems = categories
-    .filter(cat => !activeCategory || cat.id === activeCategory)
-    .map(cat => ({
+    .filter((cat) => activeCategory === 'all' || String(cat.id) === String(activeCategory))
+    .map((cat) => ({
       ...cat,
-      items: filteredItems.filter(item => item.category_id === cat.id),
+      items: filteredItems.filter((item) => String(item.category_id) === String(cat.id)),
     }))
-    .filter(cat => cat.items.length > 0);
+    .filter((cat) => cat.items.length > 0);
+
+  const clearFilters = () => {
+    setActiveCategory('all');
+    setSearch('');
+    setVegOnly(false);
+    setSpiceFilter('all');
+    setSortBy('default');
+  };
 
   return (
     <div className="min-h-screen pt-20 relative">
@@ -88,46 +151,103 @@ export default function Menu() {
       {/* Filters */}
       <section className="sticky top-20 z-30 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl border-b border-neutral-200 dark:border-neutral-800/50">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md w-full">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
-              <input
-                type="text"
-                placeholder="Search dishes..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-dark !pl-10"
-              />
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Veg filter */}
-              <button
-                onClick={() => setVegOnly(!vegOnly)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${vegOnly ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/30' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700'
-                  }`}
-              >
-                <Leaf size={16} /> Vegetarian
-              </button>
-
-              {/* Category pills - scrollable on mobile */}
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                <button
-                  onClick={() => setActiveCategory(null)}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${!activeCategory ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 hover:text-neutral-900 dark:hover:text-white'
-                    }`}
-                >
-                  All
-                </button>
-                {categories.map(cat => (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:gap-3">
+              {visibleLocations.map((location) => {
+                const isActive = selectedLocation === location.slug;
+                return (
                   <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id === activeCategory ? null : cat.id)}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat.id ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 hover:text-neutral-900 dark:hover:text-white'
+                    key={location.slug}
+                    onClick={() => setSelectedLocation(location.slug)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/30'
                       }`}
                   >
-                    {cat.name}
+                    {location.label} Menu
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto_auto] md:items-center">
+              <div className="relative w-full">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+                <input
+                  type="text"
+                  placeholder={`Search ${selectedLocation} dishes...`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="input-dark !pl-10"
+                />
+              </div>
+
+              <button
+                onClick={() => setVegOnly(!vegOnly)}
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${vegOnly
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700'
+                  }`}
+              >
+                <Leaf size={16} /> Veg Only
+              </button>
+
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60">
+                <SlidersHorizontal size={15} className="text-neutral-400 dark:text-neutral-500" />
+                <select
+                  value={spiceFilter}
+                  onChange={(e) => setSpiceFilter(e.target.value)}
+                  className="bg-transparent text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
+                >
+                  <option value="all">All Spice</option>
+                  <option value="mild">Mild</option>
+                  <option value="medium">Medium</option>
+                  <option value="hot">Hot</option>
+                  <option value="extra_hot">Extra Hot</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60 text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
+                >
+                  <option value="default">Default Sort</option>
+                  <option value="name_asc">Name A-Z</option>
+                  <option value="name_desc">Name Z-A</option>
+                  <option value="veg_first">Vegetarian First</option>
+                </select>
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 text-sm hover:border-amber-500/40 transition-colors"
+                >
+                  <RefreshCw size={14} /> Reset
+                </button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="flex gap-2 overflow-x-auto pb-2 pr-2 snap-x snap-mandatory scrollbar-hide">
+                <button
+                  onClick={() => setActiveCategory('all')}
+                  className={`snap-start whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${activeCategory === 'all'
+                    ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/40'
+                    }`}
+                >
+                  All ({filteredItems.length})
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(String(cat.id))}
+                    className={`snap-start whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${String(activeCategory) === String(cat.id)
+                      ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/40'
+                      }`}
+                  >
+                    {cat.name} ({categoryCounts[String(cat.id)] || 0})
                   </button>
                 ))}
               </div>
@@ -155,7 +275,10 @@ export default function Menu() {
           ) : groupedItems.length === 0 ? (
             <div className="text-center py-20">
               <ChefHat size={48} className="text-neutral-300 dark:text-neutral-700 mx-auto mb-4" />
-              <p className="text-neutral-500 text-lg">No dishes found matching your filters.</p>
+              <p className="text-neutral-500 text-lg">No dishes found for this location and filters.</p>
+              <button onClick={clearFilters} className="mt-4 btn-outline-gold">
+                Clear Filters
+              </button>
             </div>
           ) : (
             groupedItems.map((category) => (

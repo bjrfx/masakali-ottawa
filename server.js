@@ -361,12 +361,29 @@ async function collectRequestContext(req) {
   };
 }
 
-async function fetchTempMenuData() {
+function normalizeMenuBranch(branch) {
+  const value = String(branch || '').trim().toLowerCase();
+  return value === 'wellington' ? 'wellington' : 'stittsville';
+}
+
+function getTempMenuTableNames(branch) {
+  const normalizedBranch = normalizeMenuBranch(branch);
+  return {
+    branch: normalizedBranch,
+    categories: `temp_categories_${normalizedBranch}`,
+    categoryItems: `temp_category_items_${normalizedBranch}`,
+    items: `temp_items_${normalizedBranch}`,
+    itemImages: `temp_item_images_${normalizedBranch}`,
+  };
+}
+
+async function fetchTempMenuData(branch = 'stittsville') {
   if (!db) throw new Error('Database not connected');
+  const tables = getTempMenuTableNames(branch);
 
   const [categoryRows] = await db.query(
     `SELECT id, name, sort_order
-      FROM temp_categories_stittsville
+      FROM ${tables.categories}
      ORDER BY sort_order ASC, name ASC`
   );
 
@@ -390,12 +407,12 @@ async function fetchTempMenuData() {
        i.description,
        i.price,
        i.available,
-       img.image_type,
+      NULL AS image_type,
        img.image_url
-        FROM temp_category_items_stittsville ci
-        JOIN temp_categories_stittsville c ON ci.category_id = c.id
-        JOIN temp_items_stittsville i ON ci.item_id = i.id
-        LEFT JOIN temp_item_images_stittsville img ON img.item_id = i.id
+        FROM ${tables.categoryItems} ci
+        JOIN ${tables.categories} c ON ci.category_id = c.id
+        JOIN ${tables.items} i ON ci.item_id = i.id
+        LEFT JOIN ${tables.itemImages} img ON img.item_id = i.id
      WHERE i.available = 1
      ORDER BY c.sort_order ASC, c.name ASC, i.name ASC`
   );
@@ -1124,6 +1141,7 @@ app.get('/api/restaurants/:slug', async (req, res) => {
 
 // --- Menu ---
 app.get('/api/categories', async (req, res) => {
+  const branch = normalizeMenuBranch(req.query?.branch);
   if (db) {
     try {
       const [rows] = await db.query('SELECT * FROM menu_categories WHERE is_active = 1 ORDER BY sort_order');
@@ -1133,7 +1151,7 @@ app.get('/api/categories', async (req, res) => {
         console.error(err);
       } else {
         try {
-          const tempMenu = await fetchTempMenuData();
+          const tempMenu = await fetchTempMenuData(branch);
           return res.json(tempMenu.categories);
         } catch (tempErr) {
           if (!isTableMissingError(tempErr)) {
@@ -1175,7 +1193,7 @@ app.get('/api/menu', async (req, res) => {
         console.error(err);
       } else {
         try {
-          const tempMenu = await fetchTempMenuData();
+          const tempMenu = await fetchTempMenuData(branch);
           let items = [...tempMenu.items];
           if (category) {
             items = items.filter((item) => String(item.category_id) === String(category));
