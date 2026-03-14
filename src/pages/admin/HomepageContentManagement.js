@@ -17,6 +17,14 @@ function itemKey(item) {
   return key === undefined || key === null ? null : String(key);
 }
 
+function getMenuBranch(item) {
+  const explicitBranch = String(item?.menu_branch || '').toLowerCase();
+  if (explicitBranch === 'wellington') return 'wellington';
+  const key = itemKey(item) || '';
+  if (key.startsWith('wellington:')) return 'wellington';
+  return 'stittsville';
+}
+
 export default function AdminHomepageContentManagement() {
   const [menuItems, setMenuItems] = useState([]);
   const [featuredItems, setFeaturedItems] = useState([]);
@@ -32,18 +40,37 @@ export default function AdminHomepageContentManagement() {
   const [testimonialForm, setTestimonialForm] = useState(emptyTestimonialForm);
   const isDirtySelectionRef = useRef(false);
 
+  const normalizeBranchMenuItems = (items, branch) => {
+    return (items || []).map((item) => {
+      const baseKey = String(item?.source_id ?? item?.id ?? '').trim();
+      return {
+        ...item,
+        menu_branch: branch,
+        source_id: branch === 'wellington' ? `wellington:${baseKey}` : baseKey,
+      };
+    });
+  };
+
   const loadData = async () => {
-    const [menuResult, featuredResult, testimonialsResult] = await Promise.allSettled([
-      api.getMenu(),
+    const [stittsvilleMenuResult, wellingtonMenuResult, featuredResult, testimonialsResult] = await Promise.allSettled([
+      api.getMenu({ branch: 'stittsville' }),
+      api.getMenu({ branch: 'wellington' }),
       api.getFeaturedDishes(),
       api.getAdminTestimonials(),
     ]);
 
-    if (menuResult.status === 'fulfilled') {
-      setMenuItems(menuResult.value || []);
+    const mergedMenu = [];
+    if (stittsvilleMenuResult.status === 'fulfilled') {
+      mergedMenu.push(...normalizeBranchMenuItems(stittsvilleMenuResult.value, 'stittsville'));
     } else {
-      console.error(menuResult.reason);
+      console.error(stittsvilleMenuResult.reason);
     }
+    if (wellingtonMenuResult.status === 'fulfilled') {
+      mergedMenu.push(...normalizeBranchMenuItems(wellingtonMenuResult.value, 'wellington'));
+    } else {
+      console.error(wellingtonMenuResult.reason);
+    }
+    setMenuItems(mergedMenu);
 
     if (featuredResult.status === 'fulfilled') {
       const featured = featuredResult.value || [];
@@ -244,10 +271,18 @@ export default function AdminHomepageContentManagement() {
             <div className="space-y-2">
               {selectedItems.map((item) => {
                 const key = itemKey(item);
+                const branch = getMenuBranch(item);
                 return (
                   <div key={key} className="flex items-center justify-between border border-neutral-200 dark:border-neutral-800 rounded-lg px-3 py-2">
                     <div>
-                      <p className="text-sm text-neutral-900 dark:text-white font-medium">{item.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-neutral-900 dark:text-white font-medium">{item.name}</p>
+                        {branch === 'wellington' && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            Wellington
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-neutral-500">{item.category_name || 'Menu'}</p>
                     </div>
                     <button onClick={() => removeFeatured(key)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg" title="Remove">
@@ -273,21 +308,31 @@ export default function AdminHomepageContentManagement() {
               />
             </div>
             <div className="max-h-72 overflow-y-auto border border-neutral-200 dark:border-neutral-800 rounded-lg divide-y divide-neutral-100 dark:divide-neutral-800">
-              {filteredMenu.slice(0, 50).map((item) => (
-                <div key={itemKey(item)} className="flex items-center justify-between px-3 py-2">
-                  <div>
-                    <p className="text-sm text-neutral-900 dark:text-white">{item.name}</p>
-                    <p className="text-xs text-neutral-500">{item.category_name || 'Menu'}</p>
+              {filteredMenu.slice(0, 50).map((item) => {
+                const branch = getMenuBranch(item);
+                return (
+                  <div key={itemKey(item)} className="flex items-center justify-between px-3 py-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-neutral-900 dark:text-white">{item.name}</p>
+                        {branch === 'wellington' && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            Wellington
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-neutral-500">{item.category_name || 'Menu'}</p>
+                    </div>
+                    <button
+                      onClick={() => addFeatured(item)}
+                      disabled={selectedKeys.length >= 6}
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500 disabled:opacity-50"
+                    >
+                      <Plus size={12} /> Add
+                    </button>
                   </div>
-                  <button
-                    onClick={() => addFeatured(item)}
-                    disabled={selectedKeys.length >= 6}
-                    className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500 disabled:opacity-50"
-                  >
-                    <Plus size={12} /> Add
-                  </button>
-                </div>
-              ))}
+                );
+              })}
               {filteredMenu.length === 0 && <p className="px-3 py-3 text-sm text-neutral-500">No dishes found.</p>}
             </div>
           </div>

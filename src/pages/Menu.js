@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Search, ChefHat, Flame, Leaf, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { Search, ChefHat, Flame, SlidersHorizontal, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import api from '../api';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
@@ -32,9 +32,9 @@ export default function Menu() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('stittsville');
   const [search, setSearch] = useState('');
-  const [vegOnly, setVegOnly] = useState(false);
   const [spiceFilter, setSpiceFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
   const [loading, setLoading] = useState(true);
   const [brokenImages, setBrokenImages] = useState({});
 
@@ -65,9 +65,9 @@ export default function Menu() {
   useEffect(() => {
     setActiveCategory('all');
     setSearch('');
-    setVegOnly(false);
     setSpiceFilter('all');
     setSortBy('default');
+    setFiltersExpanded(true);
     setBrokenImages({});
   }, [selectedLocation]);
 
@@ -86,7 +86,6 @@ export default function Menu() {
 
   const filteredItems = menuItems.filter((item) => {
     if (activeCategory !== 'all' && String(item.category_id) !== String(activeCategory)) return false;
-    if (vegOnly && !item.is_vegetarian) return false;
     if (spiceFilter !== 'all' && String(item.spice_level || 'medium') !== spiceFilter) return false;
     if (
       normalizedSearch
@@ -117,7 +116,6 @@ export default function Menu() {
   const clearFilters = () => {
     setActiveCategory('all');
     setSearch('');
-    setVegOnly(false);
     setSpiceFilter('all');
     setSortBy('default');
   };
@@ -152,106 +150,115 @@ export default function Menu() {
       <section className="sticky top-20 z-30 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl border-b border-neutral-200 dark:border-neutral-800/50">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:gap-3">
-              {visibleLocations.map((location) => {
-                const isActive = selectedLocation === location.slug;
-                return (
-                  <button
-                    key={location.slug}
-                    onClick={() => setSelectedLocation(location.slug)}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
-                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/30'
-                      }`}
-                  >
-                    {location.label} Menu
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto_auto] md:items-center">
-              <div className="relative w-full">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
-                <input
-                  type="text"
-                  placeholder={`Search ${selectedLocation} dishes...`}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="input-dark !pl-10"
-                />
-              </div>
-
+            <div className="flex items-center justify-between">
+              <p className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                Menu Filters
+              </p>
               <button
-                onClick={() => setVegOnly(!vegOnly)}
-                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${vegOnly
-                  ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700'
-                  }`}
+                onClick={() => setFiltersExpanded((prev) => !prev)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 text-xs md:text-sm"
+                aria-expanded={filtersExpanded}
+                aria-label={filtersExpanded ? 'Collapse menu filters' : 'Expand menu filters'}
               >
-                <Leaf size={16} /> Veg Only
+                {filtersExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {filtersExpanded ? 'Close' : 'Open'}
               </button>
-
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60">
-                <SlidersHorizontal size={15} className="text-neutral-400 dark:text-neutral-500" />
-                <select
-                  value={spiceFilter}
-                  onChange={(e) => setSpiceFilter(e.target.value)}
-                  className="bg-transparent text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
-                >
-                  <option value="all">All Spice</option>
-                  <option value="mild">Mild</option>
-                  <option value="medium">Medium</option>
-                  <option value="hot">Hot</option>
-                  <option value="extra_hot">Extra Hot</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60 text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
-                >
-                  <option value="default">Default Sort</option>
-                  <option value="name_asc">Name A-Z</option>
-                  <option value="name_desc">Name Z-A</option>
-                  <option value="veg_first">Vegetarian First</option>
-                </select>
-                <button
-                  onClick={clearFilters}
-                  className="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 text-sm hover:border-amber-500/40 transition-colors"
-                >
-                  <RefreshCw size={14} /> Reset
-                </button>
-              </div>
             </div>
 
-            <div className="relative">
-              <div className="flex gap-2 overflow-x-auto pb-2 pr-2 snap-x snap-mandatory scrollbar-hide">
-                <button
-                  onClick={() => setActiveCategory('all')}
-                  className={`snap-start whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${activeCategory === 'all'
-                    ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/40'
-                    }`}
-                >
-                  All ({filteredItems.length})
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(String(cat.id))}
-                    className={`snap-start whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${String(activeCategory) === String(cat.id)
-                      ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/40'
-                      }`}
-                  >
-                    {cat.name} ({categoryCounts[String(cat.id)] || 0})
-                  </button>
-                ))}
-              </div>
-            </div>
+            {filtersExpanded && (
+              <>
+                <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:gap-3">
+                  {visibleLocations.map((location) => {
+                    const isActive = selectedLocation === location.slug;
+                    return (
+                      <button
+                        key={location.slug}
+                        onClick={() => setSelectedLocation(location.slug)}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/30'
+                          }`}
+                      >
+                        {location.label} Menu
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto] md:items-center">
+                  <div className="relative w-full">
+                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+                    <input
+                      type="text"
+                      placeholder={`Search ${selectedLocation} dishes...`}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="input-dark !pl-10"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60">
+                    <SlidersHorizontal size={15} className="text-neutral-400 dark:text-neutral-500" />
+                    <select
+                      value={spiceFilter}
+                      onChange={(e) => setSpiceFilter(e.target.value)}
+                      className="bg-transparent text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
+                    >
+                      <option value="all">All Spice</option>
+                      <option value="mild">Mild</option>
+                      <option value="medium">Medium</option>
+                      <option value="hot">Hot</option>
+                      <option value="extra_hot">Extra Hot</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60 text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
+                    >
+                      <option value="default">Default Sort</option>
+                      <option value="name_asc">Name A-Z</option>
+                      <option value="name_desc">Name Z-A</option>
+                      <option value="veg_first">Vegetarian First</option>
+                    </select>
+                    <button
+                      onClick={clearFilters}
+                      className="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 text-sm hover:border-amber-500/40 transition-colors"
+                    >
+                      <RefreshCw size={14} /> Reset
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="flex gap-2 overflow-x-auto pb-2 pr-2 snap-x snap-mandatory scrollbar-hide">
+                    <button
+                      onClick={() => setActiveCategory('all')}
+                      className={`snap-start whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${activeCategory === 'all'
+                        ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/40'
+                        }`}
+                    >
+                      All ({filteredItems.length})
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setActiveCategory(String(cat.id))}
+                        className={`snap-start whitespace-nowrap px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${String(activeCategory) === String(cat.id)
+                          ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
+                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-amber-500/40'
+                          }`}
+                      >
+                        {cat.name} ({categoryCounts[String(cat.id)] || 0})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>

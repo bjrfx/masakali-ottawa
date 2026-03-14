@@ -1019,12 +1019,27 @@ async function getAllMenuItems() {
       // In some deployments local menu tables may not exist yet.
       if (!isTableMissingError(err)) throw err;
 
-      try {
-        const tempMenu = await fetchTempMenuData();
-        return tempMenu.items;
-      } catch (tempErr) {
-        if (!isTableMissingError(tempErr)) throw tempErr;
+      const branches = ['stittsville', 'wellington'];
+      const combinedItems = [];
+
+      for (const branch of branches) {
+        try {
+          const tempMenu = await fetchTempMenuData(branch);
+          const normalizedItems = (tempMenu?.items || []).map((item) => {
+            const baseKey = String(item?.source_id ?? item?.id ?? '').trim();
+            return {
+              ...item,
+              menu_branch: branch,
+              source_id: branch === 'wellington' ? `wellington:${baseKey}` : baseKey,
+            };
+          });
+          combinedItems.push(...normalizedItems);
+        } catch (tempErr) {
+          if (!isTableMissingError(tempErr)) throw tempErr;
+        }
       }
+
+      return combinedItems;
     }
   }
 
