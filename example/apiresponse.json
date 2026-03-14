@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "name": "Veg Appetizer",
+    "items": [
+      {
+        "id": "ABC123",
+        "name": "Onion Bhaji",
+        "description": "Crispy onion fritters",
+        "price": "12.00",
+        "image": "https://..."
+      }
+    ]
+  }
+]

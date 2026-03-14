@@ -1,0 +1,11 @@
+SELECT
+c.name AS category,
+i.name,
+i.description,
+i.price,
+img.image_url
+FROM temp_category_items_wellington ci
+JOIN temp_categories_wellington c ON ci.category_id = c.id
+JOIN temp_items_wellington i ON ci.item_id = i.id
+LEFT JOIN temp_item_images_wellington img ON img.item_id = i.id
+ORDER BY c.sort_order;
