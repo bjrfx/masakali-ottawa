@@ -741,9 +741,99 @@ const reservationEmailUser = process.env.RESERVATION_EMAIL_USER || 'reservations
 const reservationEmailPass = process.env.RESERVATION_EMAIL_PASS || 'K143iran';
 const contactEmailUser = process.env.CONTACT_EMAIL_USER || 'contact@masakaliottawa.ca';
 const contactEmailPass = process.env.CONTACT_EMAIL_PASS || 'K143iran';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || 'https://masakaliottawa.ca';
+const EMAIL_LOGO_PATH = process.env.EMAIL_LOGO_PATH || '/logo/Masakali-Indian-Cuisine.png';
 
 const reservationTransporter = createEmailTransporter(reservationEmailUser, reservationEmailPass);
 const contactTransporter = createEmailTransporter(contactEmailUser, contactEmailPass);
+
+function buildPublicUrl(pathname) {
+  const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  try {
+    return new URL(normalizedPath, PUBLIC_BASE_URL).toString();
+  } catch (err) {
+    return `${String(PUBLIC_BASE_URL || '').replace(/\/$/, '')}${normalizedPath}`;
+  }
+}
+
+const MANAGE_RESERVATIONS_URL = buildPublicUrl('/manage-reservations');
+const EMAIL_LOGO_URL = buildPublicUrl(EMAIL_LOGO_PATH);
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildSignatureHtml(restaurantName) {
+  const safeRestaurant = escapeHtml(restaurantName || 'Masakali Indian Cuisine');
+  const safePublicBase = escapeHtml(String(PUBLIC_BASE_URL || '').replace(/\/$/, ''));
+
+  return `
+    <div style="margin-top: 28px; border-top: 1px solid #3a3a3a; padding-top: 20px; text-align: center;">
+      <img src="${EMAIL_LOGO_URL}" alt="Masakali Logo" style="height: 56px; width: auto; display: inline-block; margin-bottom: 12px;" />
+      <p style="margin: 0; color: #c9c9c9; font-size: 13px; line-height: 1.5;">
+        Warm regards,<br/>
+        <strong style="color: #ffffff;">${safeRestaurant}</strong><br/>
+        <a href="${safePublicBase}" style="color: #d4a843; text-decoration: none;">${safePublicBase}</a>
+      </p>
+    </div>
+  `;
+}
+
+function buildEmailShell({ title, preheader, introHtml, detailsHtml, ctaLabel, ctaUrl, helperText, signatureRestaurant }) {
+  const safeTitle = escapeHtml(title);
+  const safePreheader = escapeHtml(preheader || title);
+  const safeCtaLabel = ctaLabel ? escapeHtml(ctaLabel) : '';
+  const safeCtaUrl = ctaUrl ? escapeHtml(ctaUrl) : '';
+  const safeHelperText = helperText ? escapeHtml(helperText) : '';
+
+  return `
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${safePreheader}</div>
+    <div style="font-family: Arial, sans-serif; background: #0d0d0d; color: #f4f4f4; padding: 28px 16px;">
+      <div style="max-width: 620px; margin: 0 auto; background: #151515; border: 1px solid #2a2a2a; border-radius: 14px; overflow: hidden;">
+        <div style="padding: 24px 24px 8px 24px; text-align: center;">
+          <h1 style="margin: 0; color: #d4a843; font-size: 24px;">Masakali Indian Cuisine</h1>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #bdbdbd;">Authentic flavors, warm hospitality.</p>
+        </div>
+        <div style="padding: 18px 24px 24px 24px;">
+          <h2 style="margin: 0 0 14px 0; color: #ffffff; font-size: 21px;">${safeTitle}</h2>
+          ${introHtml || ''}
+          <div style="background: #1f1f1f; border: 1px solid #2d2d2d; border-radius: 10px; padding: 16px; margin: 16px 0;">
+            ${detailsHtml || ''}
+          </div>
+          ${ctaLabel && ctaUrl ? `
+            <div style="margin: 18px 0 10px 0; text-align: center;">
+              <a href="${safeCtaUrl}" style="display: inline-block; background: #d4a843; color: #151515; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">${safeCtaLabel}</a>
+            </div>
+          ` : ''}
+          ${helperText ? `<p style="margin: 12px 0 0 0; color: #b7b7b7; font-size: 13px; line-height: 1.55;">${safeHelperText}<br/><a href="${safeCtaUrl}" style="color: #d4a843; text-decoration: none;">${safeCtaUrl}</a></p>` : ''}
+          ${buildSignatureHtml(signatureRestaurant)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildReservationDetailsHtml(reservation, restaurantName) {
+  const lines = [
+    `<p style="margin: 0 0 8px 0;"><strong>Confirmation Code:</strong> ${escapeHtml(reservation.confirmation_code)}</p>`,
+    `<p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(reservation.name)}</p>`,
+    `<p style="margin: 0 0 8px 0;"><strong>Restaurant:</strong> ${escapeHtml(restaurantName || 'Masakali Ottawa')}</p>`,
+    `<p style="margin: 0 0 8px 0;"><strong>Date:</strong> ${escapeHtml(reservation.date)}</p>`,
+    `<p style="margin: 0 0 8px 0;"><strong>Time:</strong> ${escapeHtml(reservation.time)}</p>`,
+    `<p style="margin: 0;"><strong>Guests:</strong> ${escapeHtml(reservation.persons)}</p>`,
+  ];
+
+  if (reservation.special_requests) {
+    lines.push(`<p style="margin: 10px 0 0 0;"><strong>Special Requests:</strong> ${escapeHtml(reservation.special_requests)}</p>`);
+  }
+
+  return lines.join('');
+}
 
 function splitRecipientEmails(value) {
   return String(value || '')
@@ -809,47 +899,51 @@ async function sendReservationEmails(reservation, restaurant) {
   const settings = await getEmailNotificationSettings();
   const adminRecipients = splitRecipientEmails(settings.reservations_email);
 
-  if (!adminRecipients.length) {
-    console.log('Reservation email skipped (no admin recipient configured). Reservation:', reservation.confirmation_code);
-    return;
-  }
-
   if (!reservationTransporter) {
     console.log('Reservation email skipped (reservation mailbox not configured). Reservation:', reservation.confirmation_code);
     return;
   }
 
   try {
+    const restaurantName = restaurant?.name || 'Masakali Ottawa';
+
     // Customer confirmation
     await reservationTransporter.sendMail({
       from: `"Masakali Reservations" <${reservationEmailUser}>`,
       to: reservation.email,
       subject: `Reservation Confirmed - ${reservation.confirmation_code}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0d0d0d; color: #fff; padding: 30px;">
-          <h1 style="color: #d4a843; text-align: center;">Masakali Indian Cuisine</h1>
-          <h2 style="text-align: center;">Reservation Confirmation</h2>
-          <div style="background: #1a1a1a; padding: 20px; border-radius: 10px; margin: 20px 0;">
-            <p><strong>Confirmation Code:</strong> ${reservation.confirmation_code}</p>
-            <p><strong>Name:</strong> ${reservation.name}</p>
-            <p><strong>Restaurant:</strong> ${restaurant.name}</p>
-            <p><strong>Date:</strong> ${reservation.date}</p>
-            <p><strong>Time:</strong> ${reservation.time}</p>
-            <p><strong>Guests:</strong> ${reservation.persons}</p>
-            ${reservation.special_requests ? `<p><strong>Special Requests:</strong> ${reservation.special_requests}</p>` : ''}
-          </div>
-          <p style="text-align: center; color: #888;">Thank you for choosing Masakali Indian Cuisine!</p>
-        </div>
-      `,
+      html: buildEmailShell({
+        title: 'Reservation Confirmation',
+        preheader: `Reservation confirmed - ${reservation.confirmation_code}`,
+        introHtml: `<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">Thank you for reserving with us. We are excited to host you.</p>`,
+        detailsHtml: buildReservationDetailsHtml(reservation, restaurantName),
+        ctaLabel: 'Manage My Reservation',
+        ctaUrl: MANAGE_RESERVATIONS_URL,
+        helperText: 'Need to change date, time, or guest count? Use the manage reservation page anytime.',
+        signatureRestaurant: restaurantName,
+      }),
+      text: `Thank you for reserving with Masakali Indian Cuisine.\n\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nRestaurant: ${restaurantName}\nDate: ${reservation.date}\nTime: ${reservation.time}\nGuests: ${reservation.persons}\n${reservation.special_requests ? `Special Requests: ${reservation.special_requests}\n` : ''}\nNeed to update your booking? Visit: ${MANAGE_RESERVATIONS_URL}`,
     });
 
     // Admin notification
-    await reservationTransporter.sendMail({
-      from: `"Masakali Reservations" <${reservationEmailUser}>`,
-      to: adminRecipients.join(', '),
-      subject: 'New Reservation Alert',
-      text: `New reservation:\nName: ${reservation.name}\nEmail: ${reservation.email}\nPhone: ${reservation.phone}\nBranch: ${restaurant?.name || 'Masakali Ottawa'}\nDate: ${reservation.date}\nTime: ${reservation.time}\nGuests: ${reservation.persons}\nCode: ${reservation.confirmation_code}`,
-    });
+    if (adminRecipients.length) {
+      await reservationTransporter.sendMail({
+        from: `"Masakali Reservations" <${reservationEmailUser}>`,
+        to: adminRecipients.join(', '),
+        replyTo: reservation.email,
+        subject: 'New Reservation Alert',
+        html: buildEmailShell({
+          title: 'New Reservation Alert',
+          preheader: `New reservation from ${reservation.name}`,
+          introHtml: `<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A new reservation has been submitted from the website. You can reply directly to this email to contact the guest.</p>`,
+          detailsHtml: `${buildReservationDetailsHtml(reservation, restaurantName)}<p style="margin: 10px 0 0 0;"><strong>Email:</strong> ${escapeHtml(reservation.email)}</p><p style="margin: 8px 0 0 0;"><strong>Phone:</strong> ${escapeHtml(reservation.phone)}</p>`,
+          signatureRestaurant: restaurantName,
+        }),
+        text: `New reservation:\nName: ${reservation.name}\nEmail: ${reservation.email}\nPhone: ${reservation.phone}\nBranch: ${restaurantName}\nDate: ${reservation.date}\nTime: ${reservation.time}\nGuests: ${reservation.persons}\nCode: ${reservation.confirmation_code}`,
+      });
+    } else {
+      console.log('Reservation admin alert skipped (no admin recipient configured). Reservation:', reservation.confirmation_code);
+    }
   } catch (err) {
     console.error('Reservation email error:', err.message);
   }
@@ -868,32 +962,53 @@ async function sendReservationUpdateEmails(previousReservation, updatedReservati
   const newDetails = `Date: ${updatedReservation.date}, Time: ${updatedReservation.time}, Guests: ${updatedReservation.persons}`;
 
   try {
+    const restaurantName = restaurant?.name || 'Masakali Ottawa';
+
     await reservationTransporter.sendMail({
       from: `"Masakali Reservations" <${reservationEmailUser}>`,
       to: updatedReservation.email,
       subject: `Reservation Updated - ${updatedReservation.confirmation_code}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0d0d0d; color: #fff; padding: 30px;">
-          <h1 style="color: #d4a843; text-align: center;">Masakali Indian Cuisine</h1>
-          <h2 style="text-align: center;">Reservation Updated</h2>
-          <div style="background: #1a1a1a; padding: 20px; border-radius: 10px; margin: 20px 0;">
-            <p><strong>Confirmation Code:</strong> ${updatedReservation.confirmation_code}</p>
-            <p><strong>Name:</strong> ${updatedReservation.name}</p>
-            <p><strong>Restaurant:</strong> ${restaurant?.name || 'Masakali Ottawa'}</p>
-            <p><strong>Updated Details:</strong> ${newDetails}</p>
-            <p><strong>Previous Details:</strong> ${oldDetails}</p>
-            ${updatedReservation.special_requests ? `<p><strong>Special Requests:</strong> ${updatedReservation.special_requests}</p>` : ''}
-          </div>
-          <p style="text-align: center; color: #888;">Your reservation details were updated successfully.</p>
-        </div>
-      `,
+      html: buildEmailShell({
+        title: 'Reservation Updated',
+        preheader: `Reservation updated - ${updatedReservation.confirmation_code}`,
+        introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">Your reservation has been updated successfully. Please review the latest details below.</p>',
+        detailsHtml: `
+          <p style="margin: 0 0 8px 0;"><strong>Confirmation Code:</strong> ${escapeHtml(updatedReservation.confirmation_code)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(updatedReservation.name)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Restaurant:</strong> ${escapeHtml(restaurantName)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Updated Details:</strong> ${escapeHtml(newDetails)}</p>
+          <p style="margin: 0;"><strong>Previous Details:</strong> ${escapeHtml(oldDetails)}</p>
+          ${updatedReservation.special_requests ? `<p style="margin: 10px 0 0 0;"><strong>Special Requests:</strong> ${escapeHtml(updatedReservation.special_requests)}</p>` : ''}
+        `,
+        ctaLabel: 'Manage My Reservation',
+        ctaUrl: MANAGE_RESERVATIONS_URL,
+        helperText: 'Need another edit? Open the manage reservation page.',
+        signatureRestaurant: restaurantName,
+      }),
+      text: `Your reservation has been updated.\n\nConfirmation Code: ${updatedReservation.confirmation_code}\nName: ${updatedReservation.name}\nRestaurant: ${restaurantName}\nUpdated: ${newDetails}\nPrevious: ${oldDetails}\n\nManage reservation: ${MANAGE_RESERVATIONS_URL}`,
     });
 
     if (adminRecipients.length) {
       await reservationTransporter.sendMail({
         from: `"Masakali Reservations" <${reservationEmailUser}>`,
         to: adminRecipients.join(', '),
+        replyTo: updatedReservation.email,
         subject: `Reservation Updated - ${updatedReservation.confirmation_code}`,
+        html: buildEmailShell({
+          title: 'Reservation Updated (Admin Alert)',
+          preheader: `Reservation updated - ${updatedReservation.confirmation_code}`,
+          introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A guest updated an existing reservation.</p>',
+          detailsHtml: `
+            <p style="margin: 0 0 8px 0;"><strong>Code:</strong> ${escapeHtml(updatedReservation.confirmation_code)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(updatedReservation.name)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(updatedReservation.email)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(updatedReservation.phone)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Branch:</strong> ${escapeHtml(restaurantName)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Previous:</strong> ${escapeHtml(oldDetails)}</p>
+            <p style="margin: 0;"><strong>Updated:</strong> ${escapeHtml(newDetails)}</p>
+          `,
+          signatureRestaurant: restaurantName,
+        }),
         text: `Reservation updated:\nCode: ${updatedReservation.confirmation_code}\nName: ${updatedReservation.name}\nEmail: ${updatedReservation.email}\nPhone: ${updatedReservation.phone}\nBranch: ${restaurant?.name || 'Masakali Ottawa'}\nPrevious: ${oldDetails}\nUpdated: ${newDetails}`,
       });
     }
@@ -911,7 +1026,24 @@ async function sendCateringNotification(requestPayload) {
     await contactTransporter.sendMail({
       from: `"Masakali Contact" <${contactEmailUser}>`,
       to: recipients.join(', '),
+      replyTo: requestPayload.email,
       subject: 'New Catering Request',
+      html: buildEmailShell({
+        title: 'New Catering Request',
+        preheader: `Catering request from ${requestPayload.name}`,
+        introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A new catering inquiry has been received from the website.</p>',
+        detailsHtml: `
+          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(requestPayload.name)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(requestPayload.email)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(requestPayload.phone || 'N/A')}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Event Date:</strong> ${escapeHtml(requestPayload.event_date || 'N/A')}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Guests:</strong> ${escapeHtml(requestPayload.guests || 'N/A')}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Location:</strong> ${escapeHtml(requestPayload.event_location || 'N/A')}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Type:</strong> ${escapeHtml(requestPayload.event_type || 'N/A')}</p>
+          <p style="margin: 0;"><strong>Notes:</strong> ${escapeHtml(requestPayload.notes || 'N/A')}</p>
+        `,
+        signatureRestaurant: 'Masakali Catering Team',
+      }),
       text: `New catering request:\nName: ${requestPayload.name}\nEmail: ${requestPayload.email}\nPhone: ${requestPayload.phone}\nEvent Date: ${requestPayload.event_date || 'N/A'}\nGuests: ${requestPayload.guests || 'N/A'}\nLocation: ${requestPayload.event_location || 'N/A'}\nType: ${requestPayload.event_type || 'N/A'}\nNotes: ${requestPayload.notes || 'N/A'}`,
     });
   } catch (err) {
@@ -928,7 +1060,21 @@ async function sendContactNotification(inquiry) {
     await contactTransporter.sendMail({
       from: `"Masakali Contact" <${contactEmailUser}>`,
       to: recipients.join(', '),
+      replyTo: inquiry.email,
       subject: 'New Contact Form Submission',
+      html: buildEmailShell({
+        title: 'New Contact Form Submission',
+        preheader: `Contact form from ${inquiry.name}`,
+        introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A guest sent a new message from the contact form.</p>',
+        detailsHtml: `
+          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(inquiry.name)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(inquiry.email)}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(inquiry.phone || 'N/A')}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Subject:</strong> ${escapeHtml(inquiry.subject || 'N/A')}</p>
+          <p style="margin: 0;"><strong>Message:</strong> ${escapeHtml(inquiry.message)}</p>
+        `,
+        signatureRestaurant: 'Masakali Guest Relations',
+      }),
       text: `New contact inquiry:\nName: ${inquiry.name}\nEmail: ${inquiry.email}\nPhone: ${inquiry.phone || 'N/A'}\nSubject: ${inquiry.subject || 'N/A'}\nMessage: ${inquiry.message}`,
     });
   } catch (err) {
