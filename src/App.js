@@ -22,6 +22,7 @@ import AdminHomepageContentManagement from './pages/admin/HomepageContentManagem
 import AdminNotificationEmailSettings from './pages/admin/NotificationEmailSettings';
 import AdminLayout from './components/AdminLayout';
 import ScrollToTop from './components/ScrollToTop';
+import QuickBot from './components/QuickBot/QuickBot';
 
 function App() {
   const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken'));
@@ -139,6 +140,7 @@ function App() {
           <Route path="*" element={<><Navbar /><div className="min-h-screen flex items-center justify-center"><div className="text-center"><h1 className="text-6xl font-display text-gold-gradient mb-4">404</h1><p className="text-neutral-500 dark:text-neutral-400 mb-8">Page not found</p><a href="/" className="btn-gold">Return Home</a></div></div><Footer /></>} />
         </Routes>
       </Router>
+      <QuickBot />
     </ThemeProvider>
   );
 }
