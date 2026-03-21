@@ -947,6 +947,7 @@ async function sendReservationEmails(reservation, restaurant) {
   try {
     const restaurantName = restaurant?.name || 'Masakali Ottawa';
     const formattedDate = formatReservationDate(reservation.date) || reservation.date;
+    const adminReservationLabel = `New Reservation - ${restaurantName}`;
 
     // Customer confirmation
     await reservationTransporter.sendMail({
@@ -972,9 +973,9 @@ async function sendReservationEmails(reservation, restaurant) {
         from: `"Masakali Reservations" <${reservationEmailUser}>`,
         to: adminRecipients.join(', '),
         replyTo: reservation.email,
-        subject: 'New Reservation Alert',
+        subject: adminReservationLabel,
         html: buildEmailShell({
-          title: 'New Reservation Alert',
+          title: adminReservationLabel,
           preheader: `New reservation from ${reservation.name}`,
           introHtml: `<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A new reservation has been submitted from the website. You can reply directly to this email to contact the guest.</p>`,
           detailsHtml: buildReservationDetailsHtml(reservation, restaurantName),

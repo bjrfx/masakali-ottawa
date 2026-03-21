@@ -19,6 +19,13 @@ const timeSlots = [
   '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
 ];
 
+function formatDateOnly(value) {
+  if (!value) return '';
+  const text = String(value);
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : text;
+}
+
 export default function Reservations() {
   const [restaurants, setRestaurants] = useState([]);
   const [form, setForm] = useState({
@@ -179,7 +186,7 @@ export default function Reservations() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-500 text-sm">Date</span>
-                    <span className="text-neutral-900 dark:text-white text-sm">{confirmation?.date || form.date}</span>
+                    <span className="text-neutral-900 dark:text-white text-sm">{formatDateOnly(confirmation?.date || form.date)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-500 text-sm">Time</span>
