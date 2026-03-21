@@ -768,6 +768,33 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function formatReservationDate(value) {
+  if (!value) return '';
+
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    const [year, month, day] = value.trim().split('-').map((part) => Number(part));
+    const dateOnly = new Date(year, month - 1, day);
+    if (!Number.isNaN(dateOnly.getTime())) {
+      return dateOnly.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+  }
+
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+
+  return parsed.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 function buildSignatureHtml(restaurantName) {
   const safeRestaurant = escapeHtml(restaurantName || 'Masakali Indian Cuisine');
   const safePublicBase = escapeHtml(String(PUBLIC_BASE_URL || '').replace(/\/$/, ''));
@@ -819,20 +846,33 @@ function buildEmailShell({ title, preheader, introHtml, detailsHtml, ctaLabel, c
 }
 
 function buildReservationDetailsHtml(reservation, restaurantName) {
-  const lines = [
-    `<p style="margin: 0 0 8px 0;"><strong>Confirmation Code:</strong> ${escapeHtml(reservation.confirmation_code)}</p>`,
-    `<p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(reservation.name)}</p>`,
-    `<p style="margin: 0 0 8px 0;"><strong>Restaurant:</strong> ${escapeHtml(restaurantName || 'Masakali Ottawa')}</p>`,
-    `<p style="margin: 0 0 8px 0;"><strong>Date:</strong> ${escapeHtml(reservation.date)}</p>`,
-    `<p style="margin: 0 0 8px 0;"><strong>Time:</strong> ${escapeHtml(reservation.time)}</p>`,
-    `<p style="margin: 0;"><strong>Guests:</strong> ${escapeHtml(reservation.persons)}</p>`,
-  ];
+  const formattedDate = formatReservationDate(reservation.date);
+  const rows = [
+    ['Confirmation Code', reservation.confirmation_code],
+    ['Name', reservation.name],
+    ['Email', reservation.email || 'N/A'],
+    ['Date', formattedDate || reservation.date || 'N/A'],
+    ['Time', reservation.time || 'N/A'],
+    ['Phone', reservation.phone || 'N/A'],
+  ]
+    .map(
+      ([label, value]) =>
+        `<tr>
+          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; background: #191919; color: #d0d0d0; font-weight: 600; width: 170px;">${escapeHtml(label)}</td>
+          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; color: #f4f4f4;">${escapeHtml(value)}</td>
+        </tr>`
+    )
+    .join('');
 
-  if (reservation.special_requests) {
-    lines.push(`<p style="margin: 10px 0 0 0;"><strong>Special Requests:</strong> ${escapeHtml(reservation.special_requests)}</p>`);
-  }
+  const extras = [
+    `<p style="margin: 12px 0 0 0;"><strong>Restaurant:</strong> ${escapeHtml(restaurantName || 'Masakali Ottawa')}</p>`,
+    `<p style="margin: 8px 0 0 0;"><strong>Guests:</strong> ${escapeHtml(reservation.persons)}</p>`,
+    reservation.special_requests
+      ? `<p style="margin: 8px 0 0 0;"><strong>Special Requests:</strong> ${escapeHtml(reservation.special_requests)}</p>`
+      : '',
+  ].join('');
 
-  return lines.join('');
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">${rows}</table>${extras}`;
 }
 
 function splitRecipientEmails(value) {
@@ -906,6 +946,7 @@ async function sendReservationEmails(reservation, restaurant) {
 
   try {
     const restaurantName = restaurant?.name || 'Masakali Ottawa';
+    const formattedDate = formatReservationDate(reservation.date) || reservation.date;
 
     // Customer confirmation
     await reservationTransporter.sendMail({
@@ -922,7 +963,7 @@ async function sendReservationEmails(reservation, restaurant) {
         helperText: 'Need to change date, time, or guest count? Use the manage reservation page anytime.',
         signatureRestaurant: restaurantName,
       }),
-      text: `Thank you for reserving with Masakali Indian Cuisine.\n\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nRestaurant: ${restaurantName}\nDate: ${reservation.date}\nTime: ${reservation.time}\nGuests: ${reservation.persons}\n${reservation.special_requests ? `Special Requests: ${reservation.special_requests}\n` : ''}\nNeed to update your booking? Visit: ${MANAGE_RESERVATIONS_URL}`,
+      text: `Thank you for reserving with Masakali Indian Cuisine.\n\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nEmail: ${reservation.email || 'N/A'}\nDate: ${formattedDate}\nTime: ${reservation.time}\nPhone: ${reservation.phone || 'N/A'}\nRestaurant: ${restaurantName}\nGuests: ${reservation.persons}\n${reservation.special_requests ? `Special Requests: ${reservation.special_requests}\n` : ''}\nNeed to update your booking? Visit: ${MANAGE_RESERVATIONS_URL}`,
     });
 
     // Admin notification
@@ -936,10 +977,10 @@ async function sendReservationEmails(reservation, restaurant) {
           title: 'New Reservation Alert',
           preheader: `New reservation from ${reservation.name}`,
           introHtml: `<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A new reservation has been submitted from the website. You can reply directly to this email to contact the guest.</p>`,
-          detailsHtml: `${buildReservationDetailsHtml(reservation, restaurantName)}<p style="margin: 10px 0 0 0;"><strong>Email:</strong> ${escapeHtml(reservation.email)}</p><p style="margin: 8px 0 0 0;"><strong>Phone:</strong> ${escapeHtml(reservation.phone)}</p>`,
+          detailsHtml: buildReservationDetailsHtml(reservation, restaurantName),
           signatureRestaurant: restaurantName,
         }),
-        text: `New reservation:\nName: ${reservation.name}\nEmail: ${reservation.email}\nPhone: ${reservation.phone}\nBranch: ${restaurantName}\nDate: ${reservation.date}\nTime: ${reservation.time}\nGuests: ${reservation.persons}\nCode: ${reservation.confirmation_code}`,
+        text: `New reservation:\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nEmail: ${reservation.email || 'N/A'}\nDate: ${formattedDate}\nTime: ${reservation.time}\nPhone: ${reservation.phone || 'N/A'}\nBranch: ${restaurantName}\nGuests: ${reservation.persons}`,
       });
     } else {
       console.log('Reservation admin alert skipped (no admin recipient configured). Reservation:', reservation.confirmation_code);
@@ -958,8 +999,8 @@ async function sendReservationUpdateEmails(previousReservation, updatedReservati
     return;
   }
 
-  const oldDetails = `Date: ${previousReservation.date}, Time: ${previousReservation.time}, Guests: ${previousReservation.persons}`;
-  const newDetails = `Date: ${updatedReservation.date}, Time: ${updatedReservation.time}, Guests: ${updatedReservation.persons}`;
+  const oldDetails = `Date: ${formatReservationDate(previousReservation.date) || previousReservation.date}, Time: ${previousReservation.time}, Guests: ${previousReservation.persons}`;
+  const newDetails = `Date: ${formatReservationDate(updatedReservation.date) || updatedReservation.date}, Time: ${updatedReservation.time}, Guests: ${updatedReservation.persons}`;
 
   try {
     const restaurantName = restaurant?.name || 'Masakali Ottawa';
