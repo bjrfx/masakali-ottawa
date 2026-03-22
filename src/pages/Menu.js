@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Search, ChefHat, Flame, SlidersHorizontal, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, ChefHat, Flame, SlidersHorizontal, RefreshCw, ChevronUp, ChevronDown, Leaf, LayoutGrid, List } from 'lucide-react';
 import api from '../api';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
@@ -34,6 +34,7 @@ export default function Menu() {
   const [search, setSearch] = useState('');
   const [spiceFilter, setSpiceFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+  const [viewMode, setViewMode] = useState('card');
   const [filtersExpanded, setFiltersExpanded] = useState(true);
   const [loading, setLoading] = useState(true);
   const [brokenImages, setBrokenImages] = useState({});
@@ -67,6 +68,7 @@ export default function Menu() {
     setSearch('');
     setSpiceFilter('all');
     setSortBy('default');
+    setViewMode('card');
     setFiltersExpanded(true);
     setBrokenImages({});
   }, [selectedLocation]);
@@ -185,7 +187,7 @@ export default function Menu() {
                   })}
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto] md:items-center">
+                <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto_auto] md:items-center">
                   <div className="relative w-full">
                     <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
                     <input
@@ -228,6 +230,31 @@ export default function Menu() {
                       className="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 text-sm hover:border-amber-500/40 transition-colors"
                     >
                       <RefreshCw size={14} /> Reset
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('card')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${viewMode === 'card'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700'
+                        }`}
+                      aria-pressed={viewMode === 'card'}
+                    >
+                      <LayoutGrid size={15} /> Card
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('list')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${viewMode === 'list'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700'
+                        }`}
+                      aria-pressed={viewMode === 'list'}
+                    >
+                      <List size={15} /> List
                     </button>
                   </div>
                 </div>
@@ -300,57 +327,99 @@ export default function Menu() {
                   </div>
                 </AnimatedSection>
 
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {category.items.map((item, i) => {
-                    const spice = spiceColors[item.spice_level] || spiceColors.medium;
-                    const imageUrl = getItemImageUrl(item);
-                    const hasImage = Boolean(imageUrl) && !brokenImages[item.id];
-                    return (
-                      <AnimatedSection key={item.id} delay={Math.min(i * 0.05, 0.3)}>
-                        <div className="group bg-white/80 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover shadow-sm dark:shadow-none">
-                          {/* Image placeholder */}
-                          <div className="h-44 bg-gradient-to-br from-amber-100 dark:from-amber-900/20 to-neutral-100 dark:to-neutral-900 flex items-center justify-center relative">
-                            {hasImage ? (
-                              <img
-                                src={imageUrl}
-                                alt={item.name}
-                                loading="lazy"
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover"
-                                onError={() => setBrokenImages(prev => ({ ...prev, [item.id]: true }))}
-                              />
-                            ) : (
-                              <ChefHat size={40} className="text-amber-500/20 group-hover:text-amber-400/40 transition-colors" />
-                            )}
-                            {item.is_featured && (
-                              <span className="absolute top-3 right-3 px-2 py-1 bg-amber-500 text-black text-xs font-bold rounded-full">
-                                ★ Featured
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="p-6">
-                            <div className="flex items-start justify-between mb-2">
-                              <h3 className="text-neutral-900 dark:text-white font-semibold text-lg leading-tight flex-1 mr-3">{item.name}</h3>
-                              {/* <span className="text-amber-500 dark:text-amber-400 font-bold text-lg whitespace-nowrap">${item.price?.toFixed(2)}</span> */}
-                            </div>
-                            <p className="text-neutral-500 text-sm mb-4 line-clamp-2">{item.description}</p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {item.is_vegetarian && (
-                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full">
-                                  <Leaf size={12} /> Veg
+                {viewMode === 'card' ? (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {category.items.map((item, i) => {
+                      const spice = spiceColors[item.spice_level] || spiceColors.medium;
+                      const imageUrl = getItemImageUrl(item);
+                      const hasImage = Boolean(imageUrl) && !brokenImages[item.id];
+                      return (
+                        <AnimatedSection key={item.id} delay={Math.min(i * 0.05, 0.3)}>
+                          <div className="group bg-white/80 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover shadow-sm dark:shadow-none">
+                            <div className="h-44 bg-gradient-to-br from-amber-100 dark:from-amber-900/20 to-neutral-100 dark:to-neutral-900 flex items-center justify-center relative">
+                              {hasImage ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={item.name}
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                  onError={() => setBrokenImages(prev => ({ ...prev, [item.id]: true }))}
+                                />
+                              ) : (
+                                <ChefHat size={40} className="text-amber-500/20 group-hover:text-amber-400/40 transition-colors" />
+                              )}
+                              {item.is_featured && (
+                                <span className="absolute top-3 right-3 px-2 py-1 bg-amber-500 text-black text-xs font-bold rounded-full">
+                                  ★ Featured
                                 </span>
                               )}
-                              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 ${spice.bg} ${spice.text} rounded-full`}>
-                                <Flame size={12} /> {spice.label}
-                              </span>
+                            </div>
+
+                            <div className="p-6">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="text-neutral-900 dark:text-white font-semibold text-lg leading-tight flex-1 mr-3">{item.name}</h3>
+                              </div>
+                              <p className="text-neutral-500 text-sm mb-4 line-clamp-2">{item.description}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {item.is_vegetarian && (
+                                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full">
+                                    <Leaf size={12} /> Veg
+                                  </span>
+                                )}
+                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 ${spice.bg} ${spice.text} rounded-full`}>
+                                  <Flame size={12} /> {spice.label}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </AnimatedSection>
-                    );
-                  })}
-                </div>
+                        </AnimatedSection>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <AnimatedSection>
+                    <div className="bg-white/85 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-none">
+                      {category.items.map((item, i) => {
+                        const imageUrl = getItemImageUrl(item);
+                        const hasImage = Boolean(imageUrl) && !brokenImages[item.id];
+                        const isLastItem = i === category.items.length - 1;
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-4 md:p-6 ${isLastItem ? '' : 'border-b border-neutral-200 dark:border-neutral-800'}`}
+                          >
+                            <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
+                              <div className="w-full sm:w-44 h-28 rounded-md overflow-hidden bg-gradient-to-br from-amber-100 dark:from-amber-900/20 to-neutral-100 dark:to-neutral-900 flex items-center justify-center shrink-0">
+                                {hasImage ? (
+                                  <img
+                                    src={imageUrl}
+                                    alt={item.name}
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer"
+                                    className="w-full h-full object-cover"
+                                    onError={() => setBrokenImages(prev => ({ ...prev, [item.id]: true }))}
+                                  />
+                                ) : (
+                                  <ChefHat size={30} className="text-amber-500/25" />
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="border-b border-neutral-200 dark:border-neutral-700 pb-2 mb-3">
+                                  <h3 className="text-neutral-900 dark:text-white font-semibold text-2xl leading-tight">{item.name}</h3>
+                                </div>
+                                <p className="text-neutral-600 dark:text-neutral-300 text-base leading-relaxed">
+                                  {item.description || 'No description available.'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </AnimatedSection>
+                )}
               </div>
             ))
           )}
