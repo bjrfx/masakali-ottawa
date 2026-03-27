@@ -15,6 +15,8 @@ import imgStittsville1 from '../assets/restaurant-images/stittsville1.webp';
 import imgStittsville2 from '../assets/restaurant-images/stittsville2.webp';
 import imgStittsville3 from '../assets/restaurant-images/stittsville3.webp';
 import imgWellington from '../assets/restaurant-images/wellington.webp';
+import uberEatsLogo from '../assets/ubereats.png';
+import doordashLogo from '../assets/doordash.png';
 
 const heroImages = [
   imgWellington, imgStittsville1, imgRangde, imgRestobar,
@@ -245,6 +247,34 @@ export default function Home() {
             <div className="w-1 h-2 bg-amber-400 rounded-full" />
           </motion.div>
         </motion.div>
+      </section>
+
+      <section className="py-10 border-b border-neutral-200 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-950/70">
+        <div className="max-w-6xl mx-auto px-4">
+          <AnimatedSection>
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5 px-6 py-6 md:px-10 md:py-8">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div>
+                  <p className="text-amber-600 dark:text-amber-400 text-sm font-semibold uppercase tracking-wider mb-2">Delivery Partners</p>
+                  <h2 className="font-display text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">
+                    We are available on Uber Eats and DoorDash
+                  </h2>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <img src={uberEatsLogo} alt="Uber Eats" className="h-10 w-auto object-contain" loading="lazy" />
+                    <span className="text-neutral-700 dark:text-neutral-200 font-medium">Uber Eats</span>
+                  </div>
+                  <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <img src={doordashLogo} alt="DoorDash" className="h-10 w-auto object-contain" loading="lazy" />
+                    <span className="text-neutral-700 dark:text-neutral-200 font-medium">DoorDash</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
+        </div>
       </section>
 
       {/* ===== STATS BAR ===== */}

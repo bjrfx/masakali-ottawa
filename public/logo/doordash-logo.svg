@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 100" role="img" aria-labelledby="doordashTitle doordashDesc">
+  <title id="doordashTitle">DoorDash logo</title>
+  <desc id="doordashDesc">DoorDash logo with icon and wordmark</desc>
+  <rect width="460" height="100" fill="none" />
+  <g fill="#EB1700">
+    <path d="M20 55h80c19 0 34-15 34-34H54c-19 0-34 15-34 34z" />
+    <path d="M20 78h110c19 0 34-15 34-34H54c-19 0-34 15-34 34z" />
+  </g>
+  <text x="300" y="68" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700" fill="#EB1700" letter-spacing="0.3">DoorDash</text>
+</svg>
