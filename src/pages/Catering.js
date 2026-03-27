@@ -15,9 +15,9 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
 const eventTypes = ['Wedding', 'Corporate Event', 'Birthday Party', 'Anniversary', 'Festival/Holiday', 'Private Dining', 'Other'];
 
 const packages = [
-  { name: 'Silver', guests: '20–50', price: 'From $35/person', features: ['Selection of 3 curries', '2 appetizers', 'Rice & bread', 'Dessert', 'Setup & service'] },
-  { name: 'Gold', guests: '50–150', price: 'From $50/person', features: ['Selection of 5 curries', '4 appetizers', 'Tandoori station', 'Biryani', 'Dessert buffet', 'Full service team'], featured: true },
-  { name: 'Platinum', guests: '150+', price: 'Custom pricing', features: ['Full menu customization', 'Live cooking stations', 'Premium tandoori bar', 'Custom dessert menu', 'Dedicated event manager', 'Décor coordination'] },
+  { name: 'Silver', guests: '', price: 'Starting at $20/person', features: ['2 curries', '2 appetizers', 'Rice', 'Naan', 'Dessert'] },
+  { name: 'Gold', guests: '', price: 'Starting at $25/person', features: ['3 curries', '3 appetizers', 'Rice', 'Naan', 'Dessert'], featured: true },
+  { name: 'Platinum', guests: '', price: 'Starting at $30/person', features: ['4 curries', '4 appetizers', 'Rice', 'Naan', 'Dessert'] },
 ];
 
 export default function Catering() {
@@ -72,7 +72,7 @@ export default function Catering() {
           <AnimatedSection>
             <span className="text-amber-500 dark:text-amber-400 text-sm font-semibold uppercase tracking-wider">Catering Services</span>
             <div className="section-divider !mx-0" />
-            <h1 className="font-display text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mt-4 mb-4">Catering for Every <span className="text-gold-gradient">Occasion</span></h1>
+            <h1 className="font-display text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mt-4 mb-4">Ordering for an <span className="text-gold-gradient">Event/Party?</span></h1>
             <p className="text-neutral-600 dark:text-neutral-400 text-lg max-w-2xl">From intimate gatherings to grand celebrations — let Masakali bring the finest Indian cuisine to your event.</p>
           </AnimatedSection>
         </div>
@@ -91,7 +91,7 @@ export default function Catering() {
                   {pkg.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-xs font-bold px-4 py-1 rounded-full">Most Popular</span>}
                   <h3 className="font-display text-2xl font-bold text-neutral-900 dark:text-white mb-2">{pkg.name}</h3>
                   <p className="text-amber-500 dark:text-amber-400 font-semibold mb-1">{pkg.price}</p>
-                  <p className="text-neutral-500 text-sm mb-6">{pkg.guests} guests</p>
+                  {pkg.guests && <p className="text-neutral-500 text-sm mb-6">{pkg.guests} guests</p>}
                   <ul className="space-y-3 flex-1">
                     {pkg.features.map(f => <li key={f} className="flex items-center gap-3 text-neutral-600 dark:text-neutral-300 text-sm"><Check size={16} className="text-amber-500 dark:text-amber-400 flex-shrink-0" /> {f}</li>)}
                   </ul>
