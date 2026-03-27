@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
-import { MapPin, Phone, Mail, Globe, Clock, ExternalLink, Navigation } from 'lucide-react';
+import { MapPin, Phone, Mail, Globe, Clock, ExternalLink } from 'lucide-react';
 import api from '../api';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
@@ -30,9 +30,23 @@ const locationDetails = {
   restobar: { hours: 'Mon-Thu: 4:00 PM - 12:00 AM, Fri-Sun: 12:00 PM - 2:00 AM', maps: 'https://maps.google.com/?q=97+Clarence+St+Ottawa+ON+K1N+5P9' },
 };
 
+function normalizeCountry(country = '') {
+  const value = String(country).trim().toLowerCase();
+  if (value.includes('canada')) return 'Canada';
+  if (value === 'usa' || value === 'us' || value.includes('united states')) return 'USA';
+  return country || 'Other';
+}
+
 export default function Locations() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const groupedRestaurants = restaurants.reduce((groups, restaurant) => {
+    const country = normalizeCountry(restaurant.country);
+    if (!groups[country]) groups[country] = [];
+    groups[country].push(restaurant);
+    return groups;
+  }, {});
 
   useEffect(() => {
     api.getRestaurants().then(data => {
@@ -59,8 +73,8 @@ export default function Locations() {
               Find a <span className="text-gold-gradient">Masakali</span> Near You
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 text-lg max-w-2xl">
-              Discover our Ottawa locations in Stittsville and Wellington,
-              where authentic Indian cuisine meets warm hospitality.
+              Discover our locations across Canada and the USA,
+              each serving authentic Indian cuisine with warm hospitality.
             </p>
           </AnimatedSection>
         </div>
@@ -84,143 +98,106 @@ export default function Locations() {
             </div>
           ) : (
             <>
-            {/* Featured Ottawa Branches Banner */}
-            <AnimatedSection className="mb-10">
-              <div className="grand-opening-card bg-gradient-to-br from-amber-50 dark:from-amber-900/10 via-white dark:via-neutral-900/80 to-amber-50 dark:to-amber-900/10 rounded-2xl p-8 md:p-12">
-                <div className="relative z-10">
-                  <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-                    <div className="flex-shrink-0 w-24 h-24 bg-amber-500/10 rounded-3xl flex items-center justify-center">
-                      <MapPin size={44} className="text-amber-500" />
-                    </div>
-                    <div className="flex-1 text-center lg:text-left">
-                      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full grand-opening-badge text-xs mb-4">
-                        Ottawa Branches
-                      </div>
-                      <h2 className="font-display text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-3">
-                        Stittsville Main Branch & Wellington
-                      </h2>
-                      <p className="text-amber-600 dark:text-amber-400 font-semibold text-lg mb-2">Masakali Indian Cuisine</p>
-                      <p className="text-neutral-500 dark:text-neutral-400 max-w-lg">
-                        This Ottawa website serves our two local branches so guests can quickly
-                        find hours, directions, and reservation options.
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0 flex flex-col gap-3">
-                      <Link to="/reservations" className="btn-gold !px-10 !py-3.5 text-center">
-                        Reserve a Table
-                      </Link>
-                      <Link to="/menu" className="btn-outline-gold !px-10 !py-3.5 text-center">
-                        View Menu
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </AnimatedSection>
+              {['Canada', 'USA'].map((country, countryIndex) => {
+                const countryLocations = groupedRestaurants[country] || [];
+                if (!countryLocations.length) return null;
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {restaurants
-                .sort((a, b) => {
-                  if (a.slug === 'stittsville') return -1;
-                  if (b.slug === 'stittsville') return 1;
-                  return 0;
-                })
-                .map((restaurant, i) => {
-                const details = locationDetails[restaurant.slug] || {};
-                const gradient = locationImages[restaurant.slug] || 'from-amber-900/20 to-neutral-900';
                 return (
-                  <AnimatedSection key={restaurant.id} delay={i * 0.1}>
-                    <div className="group bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover h-full flex flex-col shadow-sm dark:shadow-none">
-                      <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
-                        <MapPin size={48} className="text-white/10 group-hover:text-white/20 transition-colors" />
-                        {details.badge && (
-                          <span className={`absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full ${
-                            details.badge === 'Main Branch' ? 'bg-amber-500 text-black' :
-                            details.badge === 'New' ? 'bg-blue-500 text-white' :
-                            'bg-purple-500 text-white'
-                          }`}>
-                            {details.badge}
-                          </span>
-                        )}
-                      </div>
+                  <AnimatedSection key={country} delay={countryIndex * 0.1} className="mb-12 last:mb-0">
+                    <div className="flex items-center gap-3 mb-5">
+                      <h2 className="font-display text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">{country}</h2>
+                      <span className="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        {countryLocations.length} Location{countryLocations.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
 
-                      <div className="p-6 flex-1 flex flex-col">
-                        <h3 className="text-neutral-900 dark:text-white font-semibold text-xl mb-1">{restaurant.name || restaurant.brand}</h3>
-                        <p className="text-amber-500 dark:text-amber-400/80 text-sm font-medium mb-4">{restaurant.brand}</p>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {countryLocations
+                        .sort((a, b) => {
+                          if (a.slug === 'stittsville') return -1;
+                          if (b.slug === 'stittsville') return 1;
+                          return 0;
+                        })
+                        .map((restaurant, i) => {
+                          const details = locationDetails[restaurant.slug] || {};
+                          const gradient = locationImages[restaurant.slug] || 'from-amber-900/20 to-neutral-900';
+                          return (
+                            <AnimatedSection key={restaurant.id} delay={i * 0.08}>
+                              <div className="group bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover h-full flex flex-col shadow-sm dark:shadow-none">
+                                <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
+                                  <MapPin size={48} className="text-white/10 group-hover:text-white/20 transition-colors" />
+                                  {details.badge && (
+                                    <span className={`absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full ${
+                                      details.badge === 'Main Branch' ? 'bg-amber-500 text-black' :
+                                      details.badge === 'New' ? 'bg-blue-500 text-white' :
+                                      'bg-purple-500 text-white'
+                                    }`}>
+                                      {details.badge}
+                                    </span>
+                                  )}
+                                </div>
 
-                        <div className="space-y-3 mb-6 flex-1">
-                          <div className="flex items-start gap-3">
-                            <MapPin size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-neutral-500 dark:text-neutral-400 text-sm">{restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}</span>
-                          </div>
-                          {restaurant.phone && (
-                            <div className="flex items-center gap-3">
-                              <Phone size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
-                              <a href={`tel:${restaurant.phone}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{restaurant.phone}</a>
-                            </div>
-                          )}
-                          {restaurant.email && (
-                            <div className="flex items-center gap-3">
-                              <Mail size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
-                              <a href={`mailto:${restaurant.email}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{restaurant.email}</a>
-                            </div>
-                          )}
-                          {details.hours && (
-                            <div className="flex items-start gap-3">
-                              <Clock size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
-                              <span className="text-neutral-500 dark:text-neutral-400 text-sm">{details.hours}</span>
-                            </div>
-                          )}
-                        </div>
+                                <div className="p-6 flex-1 flex flex-col">
+                                  <h3 className="text-neutral-900 dark:text-white font-semibold text-xl mb-1">{restaurant.name || restaurant.brand}</h3>
+                                  <p className="text-amber-500 dark:text-amber-400/80 text-sm font-medium mb-4">{restaurant.brand}</p>
 
-                        <div className="flex gap-3">
-                          <Link to="/reservations" className="flex-1 text-center px-4 py-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all">
-                            Reserve
-                          </Link>
-                          <Link to="/menu" className="flex-1 text-center px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all">
-                            View Menu
-                          </Link>
-                          {details.maps && (
-                            <a href={details.maps} target="_blank" rel="noopener noreferrer" className="px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 rounded-lg hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all" title="Open in Google Maps">
-                              <Navigation size={16} />
-                            </a>
-                          )}
-                        </div>
+                                  <div className="space-y-3 mb-6 flex-1">
+                                    <div className="flex items-start gap-3">
+                                      <MapPin size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
+                                      <span className="text-neutral-500 dark:text-neutral-400 text-sm">{restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}</span>
+                                    </div>
+                                    {restaurant.phone && (
+                                      <div className="flex items-center gap-3">
+                                        <Phone size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                                        <a href={`tel:${restaurant.phone}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{restaurant.phone}</a>
+                                      </div>
+                                    )}
+                                    {restaurant.email && (
+                                      <div className="flex items-center gap-3">
+                                        <Mail size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                                        <a href={`mailto:${restaurant.email}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{restaurant.email}</a>
+                                      </div>
+                                    )}
+                                    {details.hours && (
+                                      <div className="flex items-start gap-3">
+                                        <Clock size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
+                                        <span className="text-neutral-500 dark:text-neutral-400 text-sm">{details.hours}</span>
+                                      </div>
+                                    )}
+                                  </div>
 
-                        {restaurant.website && (
-                          <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
-                            <Globe size={12} /> {restaurant.website.replace('https://', '')}
-                            <ExternalLink size={10} />
-                          </a>
-                        )}
-                      </div>
+                                  <div className="flex gap-3">
+                                    <Link to="/reservations" className="flex-1 text-center px-4 py-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all">
+                                      Reserve
+                                    </Link>
+                                    <Link to="/menu" className="flex-1 text-center px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all">
+                                      View Menu
+                                    </Link>
+                                  </div>
+
+                                  {details.maps && (
+                                    <a href={details.maps} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
+                                      <MapPin size={12} /> Directions
+                                    </a>
+                                  )}
+
+                                  {restaurant.website && (
+                                    <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
+                                      <Globe size={12} /> {restaurant.website.replace('https://', '')}
+                                      <ExternalLink size={10} />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            </AnimatedSection>
+                          );
+                        })}
                     </div>
                   </AnimatedSection>
                 );
               })}
-            </div>
             </>
           )}
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-16 bg-neutral-50 dark:bg-neutral-950 bg-indian-lotus relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4">
-          <AnimatedSection className="text-center mb-8">
-            <h2 className="font-display text-3xl font-bold text-neutral-900 dark:text-white">
-              All <span className="text-gold-gradient">Locations</span>
-            </h2>
-          </AnimatedSection>
-          <AnimatedSection>
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl h-96 flex items-center justify-center shadow-sm dark:shadow-none">
-              <div className="text-center">
-                <MapPin size={48} className="text-neutral-300 dark:text-neutral-700 mx-auto mb-4" />
-                <p className="text-neutral-500 text-lg mb-2">Interactive Map</p>
-                <p className="text-neutral-400 dark:text-neutral-600 text-sm">Google Maps integration will show all locations</p>
-              </div>
-            </div>
-          </AnimatedSection>
         </div>
       </section>
     </div>

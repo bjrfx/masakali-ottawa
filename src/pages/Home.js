@@ -81,10 +81,17 @@ function HeroSlideshow() {
 
 const stats = [
   { icon: MapPin, value: '6', label: 'Locations' },
-  { icon: ChefHat, value: '38+', label: 'Menu Items' },
-  { icon: Users, value: '50K+', label: 'Happy Guests' },
+  { icon: ChefHat, value: '200+', label: 'Menu Items' },
+  { icon: Users, value: '50K+', label: 'Reviews (Most reviewed restaurant chain in Canada)' },
   { icon: Star, value: '4.8', label: 'Avg Rating' },
 ];
+
+function normalizeCountry(country = '') {
+  const value = String(country).trim().toLowerCase();
+  if (value.includes('canada')) return 'Canada';
+  if (value === 'usa' || value === 'us' || value.includes('united states')) return 'USA';
+  return country || 'Other';
+}
 
 function getFeaturedDishImage(item) {
   if (!item) return null;
@@ -103,12 +110,21 @@ function getFeaturedDishImage(item) {
 export default function Home() {
   const [featuredItems, setFeaturedItems] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+
+  const groupedLocations = restaurants.reduce((groups, restaurant) => {
+    const country = normalizeCountry(restaurant.country);
+    if (!groups[country]) groups[country] = [];
+    groups[country].push(restaurant);
+    return groups;
+  }, {});
 
   useEffect(() => {
     const loadHomepageContent = async () => {
-      const [featuredResult, testimonialResult] = await Promise.allSettled([
+      const [featuredResult, testimonialResult, restaurantsResult] = await Promise.allSettled([
         api.getFeaturedDishes(),
         api.getTestimonials(),
+        api.getRestaurants(),
       ]);
 
       if (featuredResult.status === 'fulfilled') {
@@ -121,6 +137,12 @@ export default function Home() {
         setTestimonials((testimonialResult.value || []).slice(0, 6));
       } else {
         console.error(testimonialResult.reason);
+      }
+
+      if (restaurantsResult.status === 'fulfilled') {
+        setRestaurants(restaurantsResult.value || []);
+      } else {
+        console.error(restaurantsResult.reason);
       }
     };
 
@@ -317,13 +339,13 @@ export default function Home() {
             {[...Array(8)].map((_, setIdx) => (
               <React.Fragment key={setIdx}>
                 <div className="flex-shrink-0 mx-10 md:mx-16 flex items-center justify-center" style={{ minWidth: '200px' }}>
-                  <img src="/logo/Masakali-Indian-Cuisine.png" alt="Masakali Indian Cuisine" className="h-20 md:h-20 object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
+                  <img src="/logo/Masakali-Indian-Cuisine.png" alt="Masakali Indian Cuisine" className="h-24 md:h-28 object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
                 </div>
                 <div className="flex-shrink-0 mx-10 md:mx-16 flex items-center justify-center" style={{ minWidth: '200px' }}>
-                  <img src="/logo/Masakali-RestoBar.png" alt="Masakali Restobar" className="h-16 md:h-20 object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
+                  <img src="/logo/Masakali-RestoBar.png" alt="Masakali Restobar" className="h-20 md:h-24 object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
                 </div>
                 <div className="flex-shrink-0 mx-10 md:mx-16 flex items-center justify-center" style={{ minWidth: '200px' }}>
-                  <img src="/logo/RangDe-Indian-Cuisine.png" alt="RangDe Indian Cuisine" className="h-20 md:h-20 object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
+                  <img src="/logo/RangDe-Indian-Cuisine.png" alt="RangDe Indian Cuisine" className="h-36 md:h-34 object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
                 </div>
               </React.Fragment>
             ))}
@@ -491,56 +513,42 @@ export default function Home() {
             </h2>
           </AnimatedSection>
 
-          {/* Featured Ottawa Branch Card */}
-          <AnimatedSection className="mb-8">
-            <div className="grand-opening-card bg-gradient-to-br from-amber-50 dark:from-amber-900/10 via-white dark:via-neutral-900/80 to-amber-50 dark:to-amber-900/10 rounded-2xl p-8 md:p-10">
-              <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 md:gap-10">
-                <div className="flex-shrink-0 w-20 h-20 bg-amber-500/10 rounded-2xl flex items-center justify-center">
-                  <MapPin size={36} className="text-amber-500" />
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full grand-opening-badge text-xs mb-3">
-                    <Sparkles size={12} className="animate-sparkle" />
-                    Ottawa Branches
-                  </div>
-                  <h3 className="font-display text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-                    Stittsville & Wellington
-                  </h3>
-                  <p className="text-amber-600 dark:text-amber-400 font-medium mb-1">Masakali Indian Cuisine</p>
-                  <p className="text-neutral-500 text-sm">Your two Ottawa destinations for authentic Indian dining.</p>
-                </div>
-                <div className="flex-shrink-0">
-                  <Link to="/locations" className="btn-gold !px-8">
-                    Explore Branches <ArrowRight size={16} className="ml-2" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </AnimatedSection>
+          {['Canada', 'USA'].map((country, countryIndex) => {
+            const countryLocations = groupedLocations[country] || [];
+            if (!countryLocations.length) return null;
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { name: '5507 Hazeldean Rd, Stittsville', brand: 'Masakali Indian Cuisine', status: 'Main Branch' },
-              { name: '1111 Wellington St. W, Ottawa', brand: 'Masakali Indian Cuisine', status: 'Open' },
-            ].map((loc, i) => (
-              <AnimatedSection key={loc.name} delay={i * 0.1}>
-                <div className="bg-white/80 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 card-hover shadow-sm dark:shadow-none">
-                  <div className="flex items-start justify-between mb-4">
-                    <MapPin size={20} className="text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                    <span className={`text-xs px-2 py-1 rounded-full ${loc.status === 'New' ? 'bg-blue-500/10 text-blue-500 dark:text-blue-400' :
-                      loc.status === 'Coming Soon' ? 'bg-purple-500/10 text-purple-500 dark:text-purple-400' :
-                        loc.status === 'Main Branch' ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400' :
-                          'bg-green-500/10 text-green-500 dark:text-green-400'
-                      }`}>
-                      {loc.status}
-                    </span>
-                  </div>
-                  <h3 className="text-neutral-900 dark:text-white font-semibold mb-1">{loc.brand}</h3>
-                  <p className="text-neutral-500 text-sm">{loc.name}</p>
+            return (
+              <AnimatedSection key={country} delay={countryIndex * 0.1} className="mb-10 last:mb-0">
+                <div className="flex items-center gap-3 mb-5">
+                  <h3 className="font-display text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">{country}</h3>
+                  <span className="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    {countryLocations.length} Location{countryLocations.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {countryLocations.map((restaurant, i) => (
+                    <AnimatedSection key={restaurant.id || `${country}-${restaurant.slug || i}`} delay={i * 0.08}>
+                      <div className="bg-white/80 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 card-hover shadow-sm dark:shadow-none h-full">
+                        <div className="flex items-start gap-3 mb-3">
+                          <MapPin size={20} className="text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-neutral-900 dark:text-white font-semibold">{restaurant.brand || restaurant.name}</h4>
+                            {restaurant.brand && restaurant.name && (
+                              <p className="text-neutral-500 text-xs">{restaurant.name}</p>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-neutral-500 text-sm">
+                          {restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}
+                        </p>
+                      </div>
+                    </AnimatedSection>
+                  ))}
                 </div>
               </AnimatedSection>
-            ))}
-          </div>
+            );
+          })}
 
           <AnimatedSection className="text-center mt-12">
             <Link to="/locations" className="btn-outline-gold">
