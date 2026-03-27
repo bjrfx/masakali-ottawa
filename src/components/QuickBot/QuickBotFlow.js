@@ -290,7 +290,7 @@ export function getActions({ hasReservations }) {
   if (hasReservations) {
     return [
       { id: 'view-reservations', label: 'View My Reservations' },
-      { id: 'update-reservation', label: 'Update Reservation' },
+      // { id: 'update-reservation', label: 'Update Reservation' },
       { id: 'book-table', label: 'Book New Table' },
       { id: 'catering', label: 'Catering Request' },
       { id: 'contact', label: 'Contact Us' },

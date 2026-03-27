@@ -224,9 +224,9 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.75 }}
             className="mt-4"
           >
-            {/* <Link to="/manage-reservations" className="btn-outline-gold !px-8 !py-3">
+            <Link to="/manage-reservations" className="btn-outline-gold !px-8 !py-3">
               <Clock size={18} className="mr-2" /> Manage Reservations
-            </Link> */}
+            </Link>
           </motion.div>
         </div>
 
@@ -435,7 +435,70 @@ export default function Home() {
       </section> */}
 
       {/* ===== FEATURED DISHES ===== */}
-      {/* check Home.js.bak for code */}
+      <section className="py-24 bg-neutral-50 dark:bg-neutral-950 bg-indian-lotus relative overflow-hidden bg-indian-border-bottom">
+        <div className="max-w-7xl mx-auto px-4">
+          <AnimatedSection className="text-center mb-16">
+            <span className="text-amber-500 dark:text-amber-400 text-sm font-semibold uppercase tracking-wider">Our Specialties</span>
+            <div className="section-divider" />
+            <h2 className="font-display text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mt-4">
+              Featured <span className="text-gold-gradient">Dishes</span>
+            </h2>
+          </AnimatedSection>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featuredItems.map((item, i) => {
+              const imageUrl = getFeaturedDishImage(item);
+
+              return (
+                <AnimatedSection key={item.id} delay={i * 0.1}>
+                  <div className="group bg-white/80 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover shadow-sm dark:shadow-none">
+                    <div className="h-48 bg-gradient-to-br from-amber-100 dark:from-amber-900/20 to-neutral-100 dark:to-neutral-900 flex items-center justify-center relative overflow-hidden">
+                      <ChefHat size={48} className="text-amber-500/30 group-hover:text-amber-400/50 transition-colors absolute z-10" />
+                      {imageUrl && (
+                        <img
+                          src={imageUrl}
+                          alt={item.name || 'Featured dish'}
+                          className="w-full h-full object-cover relative z-20"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.remove();
+                          }}
+                        />
+                      )}
+                    </div>
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-neutral-900 dark:text-white font-semibold text-lg">{item.name}</h3>
+                      {/* <span className="text-amber-500 dark:text-amber-400 font-bold text-lg">${item.price}</span> */}
+                    </div>
+                    <p className="text-neutral-500 text-sm mb-4 line-clamp-2">{item.description}</p>
+                    <div className="flex items-center gap-3">
+                      {item.is_vegetarian && (
+                        <span className="text-xs px-2 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full">Veg</span>
+                      )}
+                      <span className={`text-xs px-2 py-1 rounded-full ${item.spice_level === 'mild' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                        item.spice_level === 'medium' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
+                          item.spice_level === 'hot' ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' :
+                            'bg-red-500/10 text-red-600 dark:text-red-400'
+                        }`}>
+                        {item.spice_level}
+                      </span>
+                      <span className="text-neutral-400 dark:text-neutral-600 text-xs">{item.category_name}</span>
+                    </div>
+                  </div>
+                </div>
+                </AnimatedSection>
+              );
+            })}
+          </div>
+
+          <AnimatedSection className="text-center mt-12">
+            <Link to="/menu" className="btn-outline-gold">
+              View Full Menu <ArrowRight size={16} className="ml-2" />
+            </Link>
+          </AnimatedSection>
+        </div>
+      </section>
 
       {/* ===== LOCATIONS PREVIEW ===== */}
       <section className="py-24 bg-pattern bg-section-indian relative overflow-hidden">
@@ -515,9 +578,9 @@ export default function Home() {
               <Link to="/reservations" className="btn-gold text-lg !px-10 !py-4">
                 <CalendarDays size={20} className="mr-2" /> Reserve a Table
               </Link>
-              {/* <Link to="/manage-reservations" className="btn-outline-gold text-lg !px-10 !py-4">
+              <Link to="/manage-reservations" className="btn-outline-gold text-lg !px-10 !py-4">
                 <Clock size={20} className="mr-2" /> Manage Reservations
-              </Link> */}
+              </Link>
               <Link to="/catering" className="btn-outline-gold text-lg !px-10 !py-4">
                 <Users size={20} className="mr-2" /> Catering Services
               </Link>

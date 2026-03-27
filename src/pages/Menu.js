@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Search, ChefHat, Flame, SlidersHorizontal, RefreshCw, ChevronUp, ChevronDown, Leaf, LayoutGrid, List } from 'lucide-react';
+import { Search, ChefHat, Flame, SlidersHorizontal, ChevronUp, ChevronDown, Leaf, LayoutGrid, List } from 'lucide-react';
 import api from '../api';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
@@ -33,9 +33,8 @@ export default function Menu() {
   const [selectedLocation, setSelectedLocation] = useState('stittsville');
   const [search, setSearch] = useState('');
   const [spiceFilter, setSpiceFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('default');
-  const [viewMode, setViewMode] = useState('card');
-  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [viewMode, setViewMode] = useState('compact');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [brokenImages, setBrokenImages] = useState({});
 
@@ -67,9 +66,8 @@ export default function Menu() {
     setActiveCategory('all');
     setSearch('');
     setSpiceFilter('all');
-    setSortBy('default');
-    setViewMode('card');
-    setFiltersExpanded(true);
+    setViewMode('compact');
+    setFiltersExpanded(false);
     setBrokenImages({});
   }, [selectedLocation]);
 
@@ -95,11 +93,6 @@ export default function Menu() {
       && !String(item.description || '').toLowerCase().includes(normalizedSearch)
     ) return false;
     return true;
-  }).sort((left, right) => {
-    if (sortBy === 'name_asc') return String(left.name || '').localeCompare(String(right.name || ''));
-    if (sortBy === 'name_desc') return String(right.name || '').localeCompare(String(left.name || ''));
-    if (sortBy === 'veg_first') return Number(Boolean(right.is_vegetarian)) - Number(Boolean(left.is_vegetarian));
-    return 0;
   });
 
   const categoryCounts = categories.reduce((acc, category) => {
@@ -119,7 +112,6 @@ export default function Menu() {
     setActiveCategory('all');
     setSearch('');
     setSpiceFilter('all');
-    setSortBy('default');
   };
 
   return (
@@ -127,26 +119,6 @@ export default function Menu() {
       {/* Indian ornamental overlays */}
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
-
-      {/* Hero */}
-      <section className="py-20 bg-pattern bg-indian-paisley relative overflow-hidden bg-indian-arch">
-        <div className="indian-vine-left" />
-        <div className="indian-vine-right" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl" />
-        <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <AnimatedSection>
-            <span className="text-amber-500 dark:text-amber-400 text-sm font-semibold uppercase tracking-wider">Our Menu</span>
-            <div className="section-divider !mx-0" />
-            <h1 className="font-display text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mt-4 mb-4">
-              Explore Our <span className="text-gold-gradient">Flavors</span>
-            </h1>
-            <p className="text-neutral-600 dark:text-neutral-400 text-lg max-w-2xl">
-              Discover our carefully curated menu featuring authentic Indian dishes,
-              from classic curries to innovative creations.
-            </p>
-          </AnimatedSection>
-        </div>
-      </section>
 
       {/* Filters */}
       <section className="sticky top-20 z-30 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl border-b border-neutral-200 dark:border-neutral-800/50">
@@ -187,7 +159,7 @@ export default function Menu() {
                   })}
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto_auto] md:items-center">
+                <div className="grid gap-3 md:grid-cols-[minmax(230px,1fr)_auto_auto] md:items-center">
                   <div className="relative w-full">
                     <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
                     <input
@@ -215,25 +187,17 @@ export default function Menu() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60 text-sm text-neutral-700 dark:text-neutral-300 focus:outline-none"
-                    >
-                      <option value="default">Default Sort</option>
-                      <option value="name_asc">Name A-Z</option>
-                      <option value="name_desc">Name Z-A</option>
-                      <option value="veg_first">Vegetarian First</option>
-                    </select>
                     <button
-                      onClick={clearFilters}
-                      className="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 text-sm hover:border-amber-500/40 transition-colors"
+                      type="button"
+                      onClick={() => setViewMode('compact')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${viewMode === 'compact'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700'
+                        }`}
+                      aria-pressed={viewMode === 'compact'}
                     >
-                      <RefreshCw size={14} /> Reset
+                      <LayoutGrid size={15} /> Compact
                     </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setViewMode('card')}
@@ -327,7 +291,35 @@ export default function Menu() {
                   </div>
                 </AnimatedSection>
 
-                {viewMode === 'card' ? (
+                {viewMode === 'compact' ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {category.items.map((item, i) => {
+                      const spice = spiceColors[item.spice_level] || spiceColors.medium;
+                      return (
+                        <AnimatedSection key={item.id} delay={Math.min(i * 0.03, 0.2)}>
+                          <div className="bg-white/85 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 shadow-sm dark:shadow-none">
+                            <h3 className="text-neutral-900 dark:text-white font-semibold text-lg leading-tight line-clamp-1 mb-1">
+                              {item.name}
+                            </h3>
+                            <p className="text-neutral-500 dark:text-neutral-400 text-sm line-clamp-2 mb-3">
+                              {item.description || 'No description available.'}
+                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {item.is_vegetarian && (
+                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full">
+                                  <Leaf size={12} /> Veg
+                                </span>
+                              )}
+                              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 ${spice.bg} ${spice.text} rounded-full`}>
+                                <Flame size={12} /> {spice.label}
+                              </span>
+                            </div>
+                          </div>
+                        </AnimatedSection>
+                      );
+                    })}
+                  </div>
+                ) : viewMode === 'card' ? (
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {category.items.map((item, i) => {
                       const spice = spiceColors[item.spice_level] || spiceColors.medium;

@@ -110,7 +110,7 @@ export default function About() {
       </section>
 
       {/* Mission */}
-      <section className="py-24 bg-neutral-50 dark:bg-neutral-950 bg-indian-lotus relative overflow-hidden">
+      {/* <section className="py-24 bg-neutral-50 dark:bg-neutral-950 bg-indian-lotus relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <AnimatedSection>
@@ -141,7 +141,7 @@ export default function About() {
             </AnimatedSection>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Video Showcase */}
       <section className="py-28 bg-neutral-50 dark:bg-neutral-950 relative overflow-hidden">
@@ -229,7 +229,7 @@ export default function About() {
       </section>
 
       {/* Values */}
-      <section className="py-24 bg-pattern bg-section-indian relative overflow-hidden bg-indian-border-bottom">
+      {/* <section className="py-24 bg-pattern bg-section-indian relative overflow-hidden bg-indian-border-bottom">
         <div className="indian-vine-left" />
         <div className="indian-vine-right" />
         <div className="max-w-7xl mx-auto px-4">
@@ -258,7 +258,7 @@ export default function About() {
             })}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Timeline */}
       <section className="py-24 bg-neutral-50 dark:bg-neutral-950 bg-indian-jali relative overflow-hidden">

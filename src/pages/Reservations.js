@@ -143,11 +143,11 @@ export default function Reservations() {
               Book your dining experience at any Masakali location.
               Instant confirmation with email notification.
             </p>
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <Link to="/manage-reservations" className="btn-outline-gold">
                 Manage Existing Reservation
               </Link>
-            </div>
+            </div> */}
           </AnimatedSection>
         </div>
       </section>

@@ -727,7 +727,10 @@ export default function QuickBot({ config = quickBotConfig }) {
                 Status: {item.status}
               </p>
               <div className="quickbot-grid two">
-                <button className="quickbot-btn secondary" onClick={() => startUpdateReservation(item)}>
+                {/* <button className="quickbot-btn secondary" onClick={() => startUpdateReservation(item)}>
+                  Update Reservation
+                </button> */}
+                <button className="quickbot-btn secondary" onClick={() => pushAndGo('cancel-fallback')}>
                   Update Reservation
                 </button>
                 <button className="quickbot-btn ghost" onClick={() => pushAndGo('cancel-fallback')}>
@@ -1096,7 +1099,23 @@ export default function QuickBot({ config = quickBotConfig }) {
       return (
         <div className="quickbot-form">
           <div className="quickbot-bubble">
-            Cancellation requires staff confirmation. Please send a quick message and we will process it.
+            Cancellation requires staff confirmation. Please call us and we will process it.
+            <br />
+             {locationOptions.map((location) => (
+            <a
+              key={location.id}
+              href={location.tel ? `tel:${location.tel}` : undefined}
+              className="quickbot-btn secondary"
+              onClick={(event) => {
+                if (!location.tel) {
+                  event.preventDefault();
+                  setError('Phone number is currently unavailable for this location.');
+                }
+              }}
+            >
+              {location.name} {location.phone ? `(${location.phone})` : ''}
+            </a>
+          ))}
           </div>
           <button
             className="quickbot-btn primary"
