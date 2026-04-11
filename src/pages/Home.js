@@ -233,33 +233,34 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col items-center justify-center gap-3"
           >
             <Link to="/reservations" className="btn-gold text-lg !px-10 !py-4">
               Reserve a Table <ArrowRight size={18} className="ml-2" />
             </Link>
-            <Link to="/menu" className="btn-outline-gold text-lg !px-10 !py-4">
-              Explore Menu
-            </Link>
-            <button
-              type="button"
-              className="btn-outline-gold text-lg !px-10 !py-4"
-              onClick={() => setShowOrderModal(true)}
-            >
-              Order Online
-            </button>
+
+            <div className="grid grid-cols-2 gap-3 w-full max-w-sm px-2 sm:w-auto sm:px-0">
+              <Link to="/menu" className="btn-outline-gold text-base !px-5 !py-3 sm:text-lg sm:!px-8 sm:!py-3.5 w-full text-center">
+                Explore Menu
+              </Link>
+              <button
+                type="button"
+                className="btn-outline-gold text-base !px-5 !py-3 sm:text-lg sm:!px-8 sm:!py-3.5 w-full"
+                onClick={() => setShowOrderModal(true)}
+              >
+                Order Online
+              </button>
+            </div>
           </motion.div>
 
-          <motion.div
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.75 }}
-            className="mt-4"
+            className="mt-3 text-neutral-300 text-sm md:text-base"
           >
-            {/* <Link to="/manage-reservations" className="btn-outline-gold !px-8 !py-3">
-              <Clock size={18} className="mr-2" /> Manage Reservations
-            </Link> */}
-          </motion.div>
+            Order online for pickup.
+          </motion.p>
         </div>
 
         {/* Scroll indicator */}
