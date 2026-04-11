@@ -95,6 +95,28 @@ function normalizeCountry(country = '') {
   return country || 'Other';
 }
 
+function normalizePhoneDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function formatPhoneDisplay(value) {
+  const digits = normalizePhoneDigits(value);
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return String(value || '').trim();
+}
+
+function getDisplayPhone(restaurant) {
+  const slug = String(restaurant?.slug || '').toLowerCase();
+  const city = String(restaurant?.city || '').toLowerCase();
+  if (slug === 'california' || slug === 'cupertino' || city.includes('cupertino')) return '(408) 352-5097';
+  return formatPhoneDisplay(restaurant?.phone);
+}
+
 function getFeaturedDishImage(item) {
   if (!item) return null;
 
@@ -509,6 +531,11 @@ export default function Home() {
                         <p className="text-neutral-500 text-sm">
                           {restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}
                         </p>
+                        {getDisplayPhone(restaurant) && (
+                          <p className="text-neutral-500 text-sm mt-2">
+                            Phone: {getDisplayPhone(restaurant)}
+                          </p>
+                        )}
                       </div>
                     </AnimatedSection>
                   ))}

@@ -37,6 +37,36 @@ function normalizeCountry(country = '') {
   return country || 'Other';
 }
 
+function normalizePhoneDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function formatPhoneDisplay(value) {
+  const digits = normalizePhoneDigits(value);
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return String(value || '').trim();
+}
+
+function buildTelNumber(value) {
+  const digits = normalizePhoneDigits(value);
+  if (!digits) return '';
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  return `+${digits}`;
+}
+
+function getDisplayPhone(restaurant) {
+  const slug = String(restaurant?.slug || '').toLowerCase();
+  const city = String(restaurant?.city || '').toLowerCase();
+  if (slug === 'california' || slug === 'cupertino' || city.includes('cupertino')) return '(408) 352-5097';
+  return formatPhoneDisplay(restaurant?.phone);
+}
+
 export default function Locations() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,10 +176,10 @@ export default function Locations() {
                                       <MapPin size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
                                       <span className="text-neutral-500 dark:text-neutral-400 text-sm">{restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}</span>
                                     </div>
-                                    {restaurant.phone && (
+                                    {getDisplayPhone(restaurant) && (
                                       <div className="flex items-center gap-3">
                                         <Phone size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
-                                        <a href={`tel:${restaurant.phone}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{restaurant.phone}</a>
+                                        <a href={`tel:${buildTelNumber(getDisplayPhone(restaurant))}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{getDisplayPhone(restaurant)}</a>
                                       </div>
                                     )}
                                     {restaurant.email && (

@@ -1088,7 +1088,7 @@ export default function QuickBot({ config = quickBotConfig }) {
                 }
               }}
             >
-              {location.name} {location.phone ? `(${location.phone})` : ''}
+              {location.name} {location.phone ? `- ${location.phone}` : ''}
             </a>
           ))}
         </div>
@@ -1113,7 +1113,7 @@ export default function QuickBot({ config = quickBotConfig }) {
                 }
               }}
             >
-              {location.name} {location.phone ? `(${location.phone})` : ''}
+              {location.name} {location.phone ? `- ${location.phone}` : ''}
             </a>
           ))}
           </div>

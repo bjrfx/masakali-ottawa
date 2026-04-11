@@ -12,7 +12,7 @@ const quickBotConfig = {
       slug: 'california',
       menuBranch: null,
       aliases: ['cupertino', 'california', 'de anza'],
-      fallbackPhone: '',
+      fallbackPhone: '(408) 352-5097',
     },
     {
       id: 'stittsville',

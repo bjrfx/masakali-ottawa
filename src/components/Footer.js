@@ -18,11 +18,11 @@ const footerLinks = {
 };
 
 const brands = [
-  { name: 'Masakali Ottawa', url: 'https://masakaliottawa.ca' },
-  { name: 'Masakali Restobar', url: 'https://masakalirestrobar.ca' },
-  { name: 'RangDe Ottawa', url: 'https://rangdeottawa.com' },
   { name: 'Masakali Stittsville', url: 'https://masakaliottawa.ca' },
   { name: 'Masakali Wellington', url: 'https://masakaliottawa.ca/locations' },
+  { name: 'Masakali Restobar', url: 'https://masakalirestrobar.ca' },
+  { name: 'RangDe Ottawa', url: 'https://rangdeottawa.ca' },
+  { name: 'Masakali California, USA', url: 'https://masakalicalifornia.com' },
 ];
 
 export default function Footer() {
@@ -105,8 +105,14 @@ export default function Footer() {
             <div className="mt-8">
               <h3 className="text-amber-600 dark:text-amber-400 font-semibold text-sm uppercase tracking-wider mb-4">Contact</h3>
               <div className="space-y-2">
-                <a href="mailto:contact@masakaliottawa.ca" className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-2">
-                  <Mail size={14} /> contact@masakaliottawa.ca
+                <a href="mailto:masakaliottawa@gmail.com" className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-2">
+                  <Mail size={14} /> masakaliottawa@gmail.com
+                </a>
+                <a href="tel:+16138783939" className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-2">
+                  <Phone size={14} /> Stittsville: (613) 878-3939
+                </a>
+                <a href="tel:+16137929777" className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-2">
+                  <Phone size={14} /> Wellington: (613) 792-9777
                 </a>
               </div>
             </div>

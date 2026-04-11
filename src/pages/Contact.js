@@ -78,9 +78,9 @@ export default function Contact() {
             {/* Contact Info */}
             <div className="space-y-6">
               {[
-                { icon: MapPin, title: 'Our Locations', lines: ['5507 Hazeldean Rd Unit C3-1, Stittsville, ON', '1111 Wellington St. W, Ottawa, ON'] },
-                { icon: Phone, title: 'Phone', lines: ['Stittsville & Wellington branches', 'Contact us via email for quick support'] },
-                { icon: Mail, title: 'Email', lines: ['contact@masakaliottawa.ca'] },
+                { icon: MapPin, title: 'Our Locations', lines: ['5507 Hazeldean Rd, Stittsville, ON', '1111 Wellington St. W, Ottawa, ON'] },
+                { icon: Phone, title: 'Phone', lines: ['Wellington (613) 792-9777','Stittsville (613) 878-3939'] },
+                { icon: Mail, title: 'Email', lines: ['masakaliottawa@gmail.com'] },
                 { icon: Clock, title: 'Hours', lines: ['Open Daily: 11:30 AM - 10:00 PM', 'For both Ottawa branches'] },
               ].map((item, i) => {
                 const Icon = item.icon;
@@ -124,7 +124,7 @@ export default function Contact() {
                     <div className="grid md:grid-cols-2 gap-6">
                       <div><label className="block text-neutral-500 dark:text-neutral-400 text-sm mb-2">Full Name *</label><input type="text" name="name" value={form.name} onChange={handleChange} placeholder="Your name" className="input-dark" required /></div>
                       <div><label className="block text-neutral-500 dark:text-neutral-400 text-sm mb-2">Email Address *</label><input type="email" name="email" value={form.email} onChange={handleChange} placeholder="your@email.com" className="input-dark" required /></div>
-                      <div><label className="block text-neutral-500 dark:text-neutral-400 text-sm mb-2">Phone</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="4373761995" className="input-dark" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} minLength={10} /></div>
+                      <div><label className="block text-neutral-500 dark:text-neutral-400 text-sm mb-2">Phone</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="(437) 376-1995" className="input-dark" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} minLength={10} /></div>
                       <div><label className="block text-neutral-500 dark:text-neutral-400 text-sm mb-2">Subject</label><select name="subject" value={form.subject} onChange={handleChange} className="select-dark"><option value="">Select a topic</option><option value="general">General Inquiry</option><option value="reservation">Reservation Help</option><option value="catering">Catering Inquiry</option><option value="feedback">Feedback</option><option value="partnership">Partnership</option><option value="other">Other</option></select></div>
                       <div className="md:col-span-2"><label className="block text-neutral-500 dark:text-neutral-400 text-sm mb-2">Message *</label><textarea name="message" value={form.message} onChange={handleChange} rows={5} placeholder="How can we help you?" className="input-dark resize-none" required /></div>
                     </div>
