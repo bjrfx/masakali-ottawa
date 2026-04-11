@@ -135,6 +135,7 @@ export default function Home() {
   const [featuredItems, setFeaturedItems] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
+  const [showOrderModal, setShowOrderModal] = useState(false);
 
   const groupedLocations = restaurants.reduce((groups, restaurant) => {
     const country = normalizeCountry(restaurant.country);
@@ -240,6 +241,13 @@ export default function Home() {
             <Link to="/menu" className="btn-outline-gold text-lg !px-10 !py-4">
               Explore Menu
             </Link>
+            <button
+              type="button"
+              className="btn-outline-gold text-lg !px-10 !py-4"
+              onClick={() => setShowOrderModal(true)}
+            >
+              Order Online
+            </button>
           </motion.div>
 
           <motion.div
@@ -640,6 +648,70 @@ export default function Home() {
           </AnimatedSection>
         </div>
       </section>
+
+      <AnimatePresence>
+        {showOrderModal && (
+          <motion.div
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowOrderModal(false)}
+          >
+            <motion.div
+              className="w-full max-w-2xl rounded-2xl border border-amber-500/20 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-2xl"
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <p className="text-amber-600 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">Order Online</p>
+                  <h3 className="font-display text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white mt-1">Choose Your Location</h3>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close order modal"
+                  className="w-9 h-9 rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-amber-500 hover:text-amber-500 transition-colors"
+                  onClick={() => setShowOrderModal(false)}
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/40 p-5">
+                  <h4 className="text-neutral-900 dark:text-white text-lg font-semibold mb-1">Masakali Stittsville</h4>
+                  <p className="text-neutral-500 text-sm mb-4">5507 Hazeldean Rd Unit C3-1, Stittsville, ON</p>
+                  <a
+                    href="https://www.clover.com/online-ordering/masakali-indian-cuisine-ottawa"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-gold w-full justify-center"
+                  >
+                    Order from Stittsville
+                  </a>
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/40 p-5">
+                  <h4 className="text-neutral-900 dark:text-white text-lg font-semibold mb-1">Masakali Wellington</h4>
+                  <p className="text-neutral-500 text-sm mb-4">1111 Wellington St. W, Ottawa, ON</p>
+                  <a
+                    href="https://www.clover.com/online-ordering/masakali-indian-cuisinew-ottawa"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-gold w-full justify-center"
+                  >
+                    Order from Wellington
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
