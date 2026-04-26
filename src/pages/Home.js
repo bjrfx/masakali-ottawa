@@ -233,13 +233,13 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col items-center justify-center gap-3"
+            className="flex flex-col lg:flex-row items-center justify-center gap-3 lg:gap-4"
           >
             <Link to="/reservations" className="btn-gold text-lg !px-10 !py-4">
               Reserve a Table <ArrowRight size={18} className="ml-2" />
             </Link>
 
-            <div className="grid grid-cols-2 gap-3 w-full max-w-sm px-2 sm:w-auto sm:px-0">
+            <div className="grid grid-cols-2 lg:grid-cols-2 gap-3 w-full max-w-sm px-2 sm:w-auto sm:px-0 lg:w-auto lg:max-w-none">
               <Link to="/menu" className="btn-outline-gold text-base !px-5 !py-3 sm:text-lg sm:!px-8 sm:!py-3.5 w-full text-center">
                 Explore Menu
               </Link>
@@ -248,19 +248,12 @@ export default function Home() {
                 className="btn-outline-gold text-base !px-5 !py-3 sm:text-lg sm:!px-8 sm:!py-3.5 w-full"
                 onClick={() => setShowOrderModal(true)}
               >
-                Order Online
+                Order online for pickup.
               </button>
             </div>
           </motion.div>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.75 }}
-            className="mt-3 text-neutral-300 text-sm md:text-base"
-          >
-            Order online for pickup.
-          </motion.p>
+
         </div>
 
         {/* Scroll indicator */}
