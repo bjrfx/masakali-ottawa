@@ -875,6 +875,33 @@ function buildReservationDetailsHtml(reservation, restaurantName) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">${rows}</table>${extras}`;
 }
 
+function buildAdminReservationDetailsHtml(reservation, restaurantName) {
+  const formattedDate = formatReservationDate(reservation.date);
+  // Remove leading '1' from phone if present
+  const cleanPhone = String(reservation.phone || '').replace(/^1/, '');
+  // Format time to HH:MM (remove seconds)
+  const formattedTime = reservation.time ? reservation.time.slice(0, 5) : 'N/A';
+  const rows = [
+    ['Name', reservation.name],
+    ['Email', reservation.email || 'N/A'],
+    ['Date', formattedDate || reservation.date || 'N/A'],
+    ['Time', formattedTime],
+    ['Phone', cleanPhone || 'N/A'],
+    ['Guests', reservation.persons],
+    ['Restaurant', restaurantName || 'Masakali Ottawa'],
+  ]
+    .map(
+      ([label, value]) =>
+        `<tr>
+          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; background: #191919; color: #d0d0d0; font-weight: 600; width: 170px;">${escapeHtml(label)}</td>
+          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; color: #f4f4f4;">${escapeHtml(value)}</td>
+        </tr>`
+    )
+    .join('');
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">${rows}</table>`;
+}
+
 function splitRecipientEmails(value) {
   return String(value || '')
     .split(',')
@@ -977,11 +1004,11 @@ async function sendReservationEmails(reservation, restaurant) {
         html: buildEmailShell({
           title: adminReservationLabel,
           preheader: `New reservation from ${reservation.name}`,
-          introHtml: `<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A new reservation has been submitted from the website. You can reply directly to this email to contact the guest.</p>`,
-          detailsHtml: buildReservationDetailsHtml(reservation, restaurantName),
+          introHtml: '',
+          detailsHtml: buildAdminReservationDetailsHtml(reservation, restaurantName),
           signatureRestaurant: restaurantName,
         }),
-        text: `New reservation:\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nEmail: ${reservation.email || 'N/A'}\nDate: ${formattedDate}\nTime: ${reservation.time}\nPhone: ${reservation.phone || 'N/A'}\nBranch: ${restaurantName}\nGuests: ${reservation.persons}`,
+        text: `New reservation:\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nEmail: ${reservation.email || 'N/A'}\nDate: ${formattedDate}\nTime: ${reservation.time ? reservation.time.slice(0, 5) : 'N/A'}\nPhone: ${String(reservation.phone || '').replace(/^1/, '') || 'N/A'}\nBranch: ${restaurantName}\nGuests: ${reservation.persons}`,
       });
     } else {
       console.log('Reservation admin alert skipped (no admin recipient configured). Reservation:', reservation.confirmation_code);
@@ -1000,8 +1027,8 @@ async function sendReservationUpdateEmails(previousReservation, updatedReservati
     return;
   }
 
-  const oldDetails = `Date: ${formatReservationDate(previousReservation.date) || previousReservation.date}, Time: ${previousReservation.time}, Guests: ${previousReservation.persons}`;
-  const newDetails = `Date: ${formatReservationDate(updatedReservation.date) || updatedReservation.date}, Time: ${updatedReservation.time}, Guests: ${updatedReservation.persons}`;
+  const oldDetails = `Date: ${formatReservationDate(previousReservation.date) || previousReservation.date}, Time: ${previousReservation.time ? previousReservation.time.slice(0, 5) : previousReservation.time}, Guests: ${previousReservation.persons}`;
+  const newDetails = `Date: ${formatReservationDate(updatedReservation.date) || updatedReservation.date}, Time: ${updatedReservation.time ? updatedReservation.time.slice(0, 5) : updatedReservation.time}, Guests: ${updatedReservation.persons}`;
 
   try {
     const restaurantName = restaurant?.name || 'Masakali Ottawa';
@@ -1044,14 +1071,14 @@ async function sendReservationUpdateEmails(previousReservation, updatedReservati
             <p style="margin: 0 0 8px 0;"><strong>Code:</strong> ${escapeHtml(updatedReservation.confirmation_code)}</p>
             <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(updatedReservation.name)}</p>
             <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(updatedReservation.email)}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(updatedReservation.phone)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(String(updatedReservation.phone || '').replace(/^1/, ''))}</p>
             <p style="margin: 0 0 8px 0;"><strong>Branch:</strong> ${escapeHtml(restaurantName)}</p>
             <p style="margin: 0 0 8px 0;"><strong>Previous:</strong> ${escapeHtml(oldDetails)}</p>
             <p style="margin: 0;"><strong>Updated:</strong> ${escapeHtml(newDetails)}</p>
           `,
           signatureRestaurant: restaurantName,
         }),
-        text: `Reservation updated:\nCode: ${updatedReservation.confirmation_code}\nName: ${updatedReservation.name}\nEmail: ${updatedReservation.email}\nPhone: ${updatedReservation.phone}\nBranch: ${restaurant?.name || 'Masakali Ottawa'}\nPrevious: ${oldDetails}\nUpdated: ${newDetails}`,
+        text: `Reservation updated:\nCode: ${updatedReservation.confirmation_code}\nName: ${updatedReservation.name}\nEmail: ${updatedReservation.email}\nPhone: ${String(updatedReservation.phone || '').replace(/^1/, '')}\nBranch: ${restaurant?.name || 'Masakali Ottawa'}\nPrevious: ${oldDetails}\nUpdated: ${newDetails}`,
       });
     }
   } catch (err) {
