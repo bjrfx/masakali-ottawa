@@ -47,6 +47,9 @@ export default function Contact() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Failed to send message.');
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+        window.gtag('event', 'ads_conversion_Contact_1', {});
+      }
       setSubmitted(true);
     }
     catch (err) { setError(err.message || 'Failed to send message. Please try again.'); }
