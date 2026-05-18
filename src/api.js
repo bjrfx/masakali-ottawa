@@ -57,6 +57,10 @@ export const api = {
   getNotificationEmails: () => apiCall('/admin/notification-emails'),
   updateNotificationEmails: (data) => apiCall('/admin/notification-emails', { method: 'PUT', body: JSON.stringify(data) }),
 
+  // Reservation Settings
+  getReservationPauseStatus: () => apiCall('/reservation-settings/pause-status', { auth: false }),
+  toggleReservationPause: (paused) => apiCall('/admin/reservation-settings/pause', { method: 'PUT', body: JSON.stringify({ reservations_paused: paused }) }),
+
   // Reservations
   getReservations: (params = {}) => {
     const query = new URLSearchParams(params).toString();

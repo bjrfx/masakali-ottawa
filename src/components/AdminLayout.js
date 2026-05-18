@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UtensilsCrossed, CalendarDays, BarChart3, LogOut, Menu, X, ChefHat, Users, MessageSquare, Sparkles, Mail } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, CalendarDays, BarChart3, LogOut, Menu, X, ChefHat, Users, MessageSquare, Sparkles, Mail, Settings } from 'lucide-react';
 
 const sidebarLinks = [
   { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const sidebarLinks = [
   { name: 'Catering', path: '/admin/catering', icon: Users },
   { name: 'Contact', path: '/admin/contact', icon: MessageSquare },
   { name: 'Email Settings', path: '/admin/notifications', icon: Mail },
+  { name: 'Reservation Settings', path: '/admin/reservation-settings', icon: Settings },
   { name: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
 ];
 

@@ -101,6 +101,17 @@ async function initDB() {
        VALUES (1, NULL, NULL, NULL)
        ON DUPLICATE KEY UPDATE id = id`
     );
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reservation_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        reservations_paused BOOLEAN NOT NULL DEFAULT FALSE
+      )
+    `);
+    await db.query(
+      `INSERT INTO reservation_settings (id, reservations_paused)
+       VALUES (1, FALSE)
+       ON DUPLICATE KEY UPDATE id = id`
+    );
     try {
       await db.query('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS geolocation_latitude DECIMAL(10, 8) NULL');
       await db.query('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS geolocation_longitude DECIMAL(11, 8) NULL');
@@ -638,6 +649,8 @@ let mockEmailNotificationSettings = {
   contact_email: '',
   catering_email: '',
 };
+
+let mockReservationsPaused = false;
 
 let nextReservationId = 9;
 let nextCateringId = 3;
@@ -1736,6 +1749,38 @@ app.put('/api/admin/notification-emails', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Reservation Settings (Pause) ---
+app.get('/api/reservation-settings/pause-status', async (req, res) => {
+  if (db) {
+    try {
+      const [rows] = await db.query('SELECT reservations_paused FROM reservation_settings WHERE id = 1 LIMIT 1');
+      const paused = rows.length > 0 ? Boolean(rows[0].reservations_paused) : false;
+      return res.json({ reservations_paused: paused });
+    } catch (err) {
+      console.error('Error fetching reservation pause status:', err);
+    }
+  }
+  return res.json({ reservations_paused: mockReservationsPaused });
+});
+
+app.put('/api/admin/reservation-settings/pause', authMiddleware, async (req, res) => {
+  const { reservations_paused } = req.body;
+  const paused = Boolean(reservations_paused);
+
+  if (db) {
+    try {
+      await db.query('UPDATE reservation_settings SET reservations_paused = ? WHERE id = 1', [paused]);
+      return res.json({ reservations_paused: paused });
+    } catch (err) {
+      console.error('Error updating reservation pause status:', err);
+      return res.status(500).json({ error: 'Failed to update reservation pause status' });
+    }
+  }
+
+  mockReservationsPaused = paused;
+  return res.json({ reservations_paused: paused });
+});
+
 // --- Reservations ---
 app.get('/api/reservations', authMiddleware, async (req, res) => {
   const { branch, date, status } = req.query;
@@ -1760,6 +1805,22 @@ app.get('/api/reservations', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/reservations', async (req, res) => {
+  // Check if reservations are paused
+  try {
+    let isPaused = false;
+    if (db) {
+      const [rows] = await db.query('SELECT reservations_paused FROM reservation_settings WHERE id = 1 LIMIT 1');
+      isPaused = rows.length > 0 ? Boolean(rows[0].reservations_paused) : false;
+    } else {
+      isPaused = mockReservationsPaused;
+    }
+    if (isPaused) {
+      return res.status(403).json({ error: 'Reservations are currently paused for the day. Please try again later or contact us directly.' });
+    }
+  } catch (pauseErr) {
+    console.error('Error checking reservation pause status:', pauseErr);
+  }
+
   const { restaurant_id, name, email, phone, date, time, persons, special_requests, geolocation } = req.body;
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = normalizeReservationPhone(phone);
