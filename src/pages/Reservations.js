@@ -35,6 +35,7 @@ export default function Reservations() {
   const [submitted, setSubmitted] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
   const [error, setError] = useState('');
+  const [dateClosed, setDateClosed] = useState(false);
   const [reservationsPaused, setReservationsPaused] = useState(false);
 
   const getBranchOptionLabel = (restaurant) => {
@@ -65,7 +66,7 @@ export default function Reservations() {
       })
       .catch(console.error);
 
-    api.getReservationPauseStatus()
+    api.getReservationSettings()
       .then((data) => setReservationsPaused(Boolean(data.reservations_paused)))
       .catch(console.error);
   }, []);
@@ -89,7 +90,32 @@ export default function Reservations() {
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  
+  useEffect(() => {
+    const canCheck = form.restaurant_id && form.date;
+    if (!canCheck) {
+      setDateClosed(false);
+      return;
+    }
+    let cancelled = false;
+    api.getReservationAvailability({
+      restaurant_id: form.restaurant_id,
+      date: form.date,
+      time: form.time || '19:00',
+    })
+      .then((result) => {
+        if (cancelled) return;
+        const closed = !result?.available;
+        setDateClosed(closed);
+        if (closed) setError('Reservations are closed for the selected day/service period.');
+      })
+      .catch(() => {
+        if (!cancelled) setDateClosed(false);
+      });
+    return () => { cancelled = true; };
+  }, [form.restaurant_id, form.date, form.time]);
+
+const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.phone || !form.date || !form.time || !form.restaurant_id) {
       setError('Please fill in all required fields.');
@@ -98,6 +124,10 @@ export default function Reservations() {
 
     if (!/^\d{10}$/.test(form.phone)) {
       setError('Phone number must be exactly 10 digits.');
+      return;
+    }
+    if (dateClosed) {
+      setError('Reservations are closed for the selected day/service period.');
       return;
     }
 
@@ -257,6 +287,11 @@ export default function Reservations() {
                       {error}
                     </div>
                   )}
+                  {!error && dateClosed && (
+                    <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-600 dark:text-amber-400 text-sm">
+                      Reservations are closed for the selected day/service period.
+                    </div>
+                  )}
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
@@ -308,7 +343,7 @@ export default function Reservations() {
                   </div>
 
                   <div className="mt-8 flex flex-col sm:flex-row items-center gap-4">
-                    <button type="submit" disabled={submitting} className="btn-gold w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button type="submit" disabled={submitting || dateClosed} className="btn-gold w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
                       {submitting ? (
                         <><Loader2 size={18} className="mr-2 animate-spin" /> Booking...</>
                       ) : (

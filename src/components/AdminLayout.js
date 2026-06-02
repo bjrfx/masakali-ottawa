@@ -1,23 +1,28 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UtensilsCrossed, CalendarDays, BarChart3, LogOut, Menu, X, ChefHat, Users, MessageSquare, Sparkles, Mail, Settings, Megaphone } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, CalendarDays, BarChart3, LogOut, Menu, X, ChefHat, Users, MessageSquare, Sparkles, Mail, Settings, Megaphone, ShoppingBag } from 'lucide-react';
+import useAdminNotifications from '../hooks/useAdminNotifications';
+import AdminNotificationBell from './admin/AdminNotificationBell';
 
 const sidebarLinks = [
   { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
   { name: 'Menu Management', path: '/admin/menu', icon: UtensilsCrossed },
   { name: 'Homepage Content', path: '/admin/homepage', icon: Sparkles },
+  { name: 'Online Order Popup', path: '/admin/online-order-popup', icon: ShoppingBag },
   { name: 'Reservations', path: '/admin/reservations', icon: CalendarDays },
+  { name: 'Smart Calendar', path: '/admin/smart-calendar', icon: CalendarDays },
+  { name: 'Reservation Settings', path: '/admin/reservation-settings', icon: Settings },
   { name: 'Catering', path: '/admin/catering', icon: Users },
   { name: 'Contact', path: '/admin/contact', icon: MessageSquare },
   { name: 'Email Settings', path: '/admin/notifications', icon: Mail },
   { name: 'Hiring Banner', path: '/admin/hiring', icon: Megaphone },
-  { name: 'Reservation Settings', path: '/admin/reservation-settings', icon: Settings },
   { name: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
 ];
 
 export default function AdminLayout({ children, admin, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const notificationModel = useAdminNotifications();
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-dark-950 flex">
@@ -98,16 +103,19 @@ export default function AdminLayout({ children, admin, onLogout }) {
         {/* Top Bar */}
         <header className="sticky top-0 z-30 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center justify-between px-6 h-16">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-            >
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+              >
+                {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
               <Link to="/" className="text-neutral-400 dark:text-neutral-500 hover:text-amber-600 dark:hover:text-amber-400 text-xs transition-colors">
                 ← View Website
               </Link>
+            </div>
+            <div className="flex items-center">
+              <AdminNotificationBell model={notificationModel} compact />
             </div>
           </div>
         </header>

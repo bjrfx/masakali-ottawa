@@ -17,6 +17,7 @@ import imgStittsville3 from '../assets/restaurant-images/stittsville3.webp';
 import imgWellington from '../assets/restaurant-images/wellington.webp';
 import uberEatsLogo from '../assets/ubereats.png';
 import doordashLogo from '../assets/doordash.png';
+import OnlineOrderPopup from '../components/OnlineOrderPopup';
 
 const heroImages = [
   imgWellington, imgStittsville1, imgRangde, imgRestobar,
@@ -181,6 +182,10 @@ export default function Home() {
       {/* Indian ornamental overlays */}
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
+      <OnlineOrderPopup
+        onStartOrder={() => setShowOrderModal(true)}
+        storageKey="masakali_ottawa_online_order_popup_seen_v1"
+      />
 
       {/* ===== HERO ===== */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">

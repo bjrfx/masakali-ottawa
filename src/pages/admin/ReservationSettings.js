@@ -16,7 +16,7 @@ export default function ReservationSettings() {
   const loadPauseStatus = async () => {
     setLoading(true);
     try {
-      const data = await api.getReservationPauseStatus();
+      const data = await api.getReservationSettings();
       setPaused(Boolean(data.reservations_paused));
     } catch (err) {
       console.error('Failed to load pause status:', err);
