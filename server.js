@@ -899,640 +899,71 @@ function buildCustomerReservationUpdatePayload(input) {
 }
 
 // =====================================================
-// Email Transporter
+// Email Template System
 // =====================================================
-const SMTP_HOST = process.env.EMAIL_SMTP_HOST || process.env.EMAIL_HOST || 'mail.masakaliottawa.ca';
-const SMTP_PORT = parseInt(process.env.EMAIL_SMTP_PORT || process.env.EMAIL_PORT || '465', 10);
+const { createEmailTemplateSystem } = require('./emailTemplateSystem');
 
-function createEmailTransporter(user, pass) {
-  if (!user || !pass) return null;
-  try {
-    return nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: true,
-      auth: { user, pass },
-    });
-  } catch (err) {
-    console.log('Email transporter not configured for user:', user, err.message);
-    return null;
-  }
-}
-
-const reservationEmailUser = process.env.RESERVATION_EMAIL_USER || "";
-const reservationEmailPass = process.env.RESERVATION_EMAIL_PASS || "";
-const contactEmailUser = process.env.CONTACT_EMAIL_USER || "";
-const contactEmailPass = process.env.CONTACT_EMAIL_PASS || "";
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || 'https://masakaliottawa.ca';
-const EMAIL_LOGO_PATH = process.env.EMAIL_LOGO_PATH || '/logo/Masakali-Indian-Cuisine.png';
-
-const reservationTransporter = createEmailTransporter(reservationEmailUser, reservationEmailPass);
-const contactTransporter = createEmailTransporter(contactEmailUser, contactEmailPass);
-
-function buildPublicUrl(pathname) {
-  const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
-  try {
-    return new URL(normalizedPath, PUBLIC_BASE_URL).toString();
-  } catch (err) {
-    return `${String(PUBLIC_BASE_URL || '').replace(/\/$/, '')}${normalizedPath}`;
-  }
-}
-
-const MANAGE_RESERVATIONS_URL = buildPublicUrl('/manage-reservations');
-const EMAIL_LOGO_URL = buildPublicUrl(EMAIL_LOGO_PATH);
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function formatReservationDate(value) {
-  if (!value) return '';
-
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-    const [year, month, day] = value.trim().split('-').map((part) => Number(part));
-    const dateOnly = new Date(year, month - 1, day);
-    if (!Number.isNaN(dateOnly.getTime())) {
-      return dateOnly.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
+const emailSystem = createEmailTemplateSystem({
+  app,
+  nodemailer,
+  io,
+  getDb: () => db,
+  authMiddleware,
+  mockRestaurants,
+  mockReservationBlockouts,
+  mockAdminNotifications,
+  mockEmailNotificationSettings,
+  siteConfig: {
+  "brand": "Masakali Indian Cuisine",
+  "defaultRestaurantName": "Masakali Ottawa",
+  "smtpHost": process.env.EMAIL_SMTP_HOST || process.env.EMAIL_HOST || "",
+  "reservationUser": process.env.RESERVATION_EMAIL_USER || "",
+  "reservationPass": process.env.RESERVATION_EMAIL_PASS || "",
+  "contactUser": process.env.CONTACT_EMAIL_USER || "",
+  "contactPass": process.env.CONTACT_EMAIL_PASS || "",
+  "baseUrl": "https://masakaliottawa.ca",
+  "logoPath": "/logo/Masakali-Indian-Cuisine.png",
+  "logoAlt": "Masakali Indian Cuisine",
+  "locations": [
+    {
+      "restaurant_id": 2,
+      "location_slug": "stittsville",
+      "restaurant_name": "Masakali Indian Cuisine - Stittsville",
+      "address": "5507 Hazeldean Rd Unit C3-1, Stittsville, ON",
+      "phone": "(613) 878-3939",
+      "business_hours": "Mon-Sun: 11:30 AM - 10:00 PM",
+      "online_order_url": "https://www.clover.com/online-ordering/masakali-indian-cuisine-ottawa",
+      "sort_order": 1
+    },
+    {
+      "restaurant_id": 1,
+      "location_slug": "wellington",
+      "restaurant_name": "Masakali Indian Cuisine - Wellington",
+      "address": "1111 Wellington St. W, Ottawa, ON",
+      "phone": "(613) 792-9777",
+      "business_hours": "Mon-Sun: 11:30 AM - 10:00 PM",
+      "online_order_url": "https://www.clover.com/online-ordering/masakali-indian-cuisinew-ottawa",
+      "sort_order": 2
     }
-  }
-
-  const parsed = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(parsed.getTime())) return String(value);
-
-  return parsed.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function buildSignatureHtml(restaurantName) {
-  const safeRestaurant = escapeHtml(restaurantName || 'Masakali Indian Cuisine');
-  const safePublicBase = escapeHtml(String(PUBLIC_BASE_URL || '').replace(/\/$/, ''));
-
-  return `
-    <div style="margin-top: 28px; border-top: 1px solid #3a3a3a; padding-top: 20px; text-align: center;">
-      <img src="${EMAIL_LOGO_URL}" alt="Masakali Logo" style="height: 56px; width: auto; display: inline-block; margin-bottom: 12px;" />
-      <p style="margin: 0; color: #c9c9c9; font-size: 13px; line-height: 1.5;">
-        Warm regards,<br/>
-        <strong style="color: #ffffff;">${safeRestaurant}</strong><br/>
-        <a href="${safePublicBase}" style="color: #d4a843; text-decoration: none;">${safePublicBase}</a>
-      </p>
-    </div>
-  `;
-}
-
-function buildEmailShell({ title, preheader, introHtml, detailsHtml, ctaLabel, ctaUrl, helperText, signatureRestaurant }) {
-  const safeTitle = escapeHtml(title);
-  const safePreheader = escapeHtml(preheader || title);
-  const safeCtaLabel = ctaLabel ? escapeHtml(ctaLabel) : '';
-  const safeCtaUrl = ctaUrl ? escapeHtml(ctaUrl) : '';
-  const safeHelperText = helperText ? escapeHtml(helperText) : '';
-
-  return `
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${safePreheader}</div>
-    <div style="font-family: Arial, sans-serif; background: #0d0d0d; color: #f4f4f4; padding: 28px 16px;">
-      <div style="max-width: 620px; margin: 0 auto; background: #151515; border: 1px solid #2a2a2a; border-radius: 14px; overflow: hidden;">
-        <div style="padding: 24px 24px 8px 24px; text-align: center;">
-          <h1 style="margin: 0; color: #d4a843; font-size: 24px;">Masakali Indian Cuisine</h1>
-          <p style="margin: 10px 0 0 0; font-size: 13px; color: #bdbdbd;">Authentic flavors, warm hospitality.</p>
-        </div>
-        <div style="padding: 18px 24px 24px 24px;">
-          <h2 style="margin: 0 0 14px 0; color: #ffffff; font-size: 21px;">${safeTitle}</h2>
-          ${introHtml || ''}
-          <div style="background: #1f1f1f; border: 1px solid #2d2d2d; border-radius: 10px; padding: 16px; margin: 16px 0;">
-            ${detailsHtml || ''}
-          </div>
-          ${ctaLabel && ctaUrl ? `
-            <div style="margin: 18px 0 10px 0; text-align: center;">
-              <a href="${safeCtaUrl}" style="display: inline-block; background: #d4a843; color: #151515; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">${safeCtaLabel}</a>
-            </div>
-          ` : ''}
-          ${helperText ? `<p style="margin: 12px 0 0 0; color: #b7b7b7; font-size: 13px; line-height: 1.55;">${safeHelperText}<br/><a href="${safeCtaUrl}" style="color: #d4a843; text-decoration: none;">${safeCtaUrl}</a></p>` : ''}
-          ${buildSignatureHtml(signatureRestaurant)}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function buildReservationDetailsHtml(reservation, restaurantName) {
-  const formattedDate = formatReservationDate(reservation.date);
-  const rows = [
-    ['Confirmation Code', reservation.confirmation_code],
-    ['Name', reservation.name],
-    ['Email', reservation.email || 'N/A'],
-    ['Date', formattedDate || reservation.date || 'N/A'],
-    ['Time', reservation.time || 'N/A'],
-    ['Phone', reservation.phone || 'N/A'],
   ]
-    .map(
-      ([label, value]) =>
-        `<tr>
-          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; background: #191919; color: #d0d0d0; font-weight: 600; width: 170px;">${escapeHtml(label)}</td>
-          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; color: #f4f4f4;">${escapeHtml(value)}</td>
-        </tr>`
-    )
-    .join('');
+},
+});
 
-  const extras = [
-    `<p style="margin: 12px 0 0 0;"><strong>Restaurant:</strong> ${escapeHtml(restaurantName || 'Masakali Ottawa')}</p>`,
-    `<p style="margin: 8px 0 0 0;"><strong>Guests:</strong> ${escapeHtml(reservation.persons)}</p>`,
-    reservation.special_requests
-      ? `<p style="margin: 8px 0 0 0;"><strong>Special Requests:</strong> ${escapeHtml(reservation.special_requests)}</p>`
-      : '',
-  ].join('');
-
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">${rows}</table>${extras}`;
-}
-
-function buildAdminReservationDetailsHtml(reservation, restaurantName) {
-  const formattedDate = formatReservationDate(reservation.date);
-  // Remove leading '1' from phone if present
-  const cleanPhone = String(reservation.phone || '').replace(/^1/, '');
-  // Format time to HH:MM (remove seconds)
-  const formattedTime = reservation.time ? reservation.time.slice(0, 5) : 'N/A';
-  const rows = [
-    ['Name', reservation.name],
-    ['Email', reservation.email || 'N/A'],
-    ['Date', formattedDate || reservation.date || 'N/A'],
-    ['Time', formattedTime],
-    ['Phone', cleanPhone || 'N/A'],
-    ['Guests', reservation.persons],
-    ['Restaurant', restaurantName || 'Masakali Ottawa'],
-  ]
-    .map(
-      ([label, value]) =>
-        `<tr>
-          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; background: #191919; color: #d0d0d0; font-weight: 600; width: 170px;">${escapeHtml(label)}</td>
-          <td style="padding: 8px 10px; border: 1px solid #3a3a3a; color: #f4f4f4;">${escapeHtml(value)}</td>
-        </tr>`
-    )
-    .join('');
-
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">${rows}</table>`;
-}
-
-function splitRecipientEmails(value) {
-  return String(value || '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function normalizeRecipientSetting(value) {
-  return splitRecipientEmails(value).join(', ');
-}
-
-function emitAdminEvent(eventName, payload = {}, restaurantId = null) {
-  const eventPayload = {
-    event: eventName,
-    restaurant_id: restaurantId || null,
-    ...payload,
-    emitted_at: new Date().toISOString(),
-  };
-  io.to('admin:all').emit(eventName, eventPayload);
-  if (restaurantId) io.to('admin:' + restaurantId).emit(eventName, eventPayload);
-}
-
-function deriveServicePeriodFromTime(timeValue) {
-  const normalized = String(timeValue || '').trim();
-  const hour = parseInt(normalized.slice(0, 2), 10);
-  if (!Number.isFinite(hour)) return 'dinner';
-  return hour < 16 ? 'lunch' : 'dinner';
-}
-
-function dateRangeInclusive(startDate, endDate) {
-  const from = new Date(`${startDate}T00:00:00`);
-  const to = new Date(`${endDate}T00:00:00`);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) return [];
-  const out = [];
-  const cursor = new Date(from);
-  while (cursor <= to) {
-    out.push(cursor.toISOString().slice(0, 10));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return out;
-}
-
-async function createAdminNotification(notificationInput = {}) {
-  const payload = {
-    type: String(notificationInput.type || 'system'),
-    title: String(notificationInput.title || 'Notification'),
-    message: notificationInput.message ? String(notificationInput.message) : null,
-    entity_type: notificationInput.entity_type ? String(notificationInput.entity_type) : null,
-    entity_id: notificationInput.entity_id ? Number(notificationInput.entity_id) : null,
-    restaurant_id: notificationInput.restaurant_id ? Number(notificationInput.restaurant_id) : null,
-    payload_json: notificationInput.payload_json || null,
-    is_read: 0,
-    created_at: new Date().toISOString(),
-  };
-
-  if (db) {
-    try {
-      const [result] = await db.query(
-        `INSERT INTO admin_notifications
-          (type, title, message, entity_type, entity_id, restaurant_id, payload_json, is_read)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-        [
-          payload.type,
-          payload.title,
-          payload.message,
-          payload.entity_type,
-          payload.entity_id,
-          payload.restaurant_id,
-          payload.payload_json ? JSON.stringify(payload.payload_json) : null,
-        ]
-      );
-      payload.id = result.insertId;
-    } catch (err) {
-      console.error('Failed to persist admin notification:', err.message);
-      return null;
-    }
-  } else {
-    payload.id = nextAdminNotificationId++;
-    mockAdminNotifications.unshift(payload);
-  }
-
-  emitAdminEvent('admin.notification.created', { notification: payload }, payload.restaurant_id || null);
-  return payload;
-}
-
-function reservationServicePeriodFromTime(timeValue) {
-  const hour = parseInt(String(timeValue || '00:00').slice(0, 2), 10);
-  if (!Number.isFinite(hour)) return 'dinner';
-  return hour < 16 ? 'lunch' : 'dinner';
-}
-
-async function isReservationBlocked({ restaurantId, date, time }) {
-  const period = reservationServicePeriodFromTime(time);
-  if (!restaurantId || !date) return false;
-
-  if (db) {
-    try {
-      const [rows] = await db.query(
-        `SELECT id FROM reservation_blockouts
-         WHERE restaurant_id = ?
-           AND block_date = ?
-           AND is_active = 1
-           AND (service_period = 'all_day' OR service_period = ?)
-         LIMIT 1`,
-        [Number(restaurantId), String(date), period]
-      );
-      return rows.length > 0;
-    } catch (err) {
-      console.error('Blockout check failed:', err.message);
-      return false;
-    }
-  }
-
-  return mockReservationBlockouts.some((row) => (
-    Number(row.restaurant_id) === Number(restaurantId)
-    && String(row.block_date) === String(date)
-    && Number(row.is_active) === 1
-    && (row.service_period === 'all_day' || row.service_period === period)
-  ));
-}
-
-async function createAdminNotification(notificationInput = {}) {
-  const payload = {
-    type: String(notificationInput.type || 'system'),
-    title: String(notificationInput.title || 'Notification'),
-    message: notificationInput.message ? String(notificationInput.message) : null,
-    entity_type: notificationInput.entity_type ? String(notificationInput.entity_type) : null,
-    entity_id: notificationInput.entity_id ? Number(notificationInput.entity_id) : null,
-    restaurant_id: notificationInput.restaurant_id ? Number(notificationInput.restaurant_id) : null,
-    payload_json: notificationInput.payload_json || null,
-    is_read: 0,
-    created_at: new Date().toISOString(),
-  };
-
-  if (db) {
-    try {
-      const [result] = await db.query(
-        `INSERT INTO admin_notifications
-          (type, title, message, entity_type, entity_id, restaurant_id, payload_json, is_read)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-        [
-          payload.type,
-          payload.title,
-          payload.message,
-          payload.entity_type,
-          payload.entity_id,
-          payload.restaurant_id,
-          payload.payload_json ? JSON.stringify(payload.payload_json) : null,
-        ]
-      );
-      payload.id = result.insertId;
-    } catch (err) {
-      console.error('Failed to persist admin notification:', err.message);
-      return null;
-    }
-  } else {
-    payload.id = nextAdminNotificationId++;
-    mockAdminNotifications.unshift(payload);
-  }
-
-  emitAdminEvent('admin.notification.created', { notification: payload }, payload.restaurant_id || null);
-  return payload;
-}
-
-async function getEmailNotificationSettings() {
-  if (db) {
-    try {
-      const [rows] = await db.query(
-        'SELECT reservations_email, contact_email, catering_email, hiring_email FROM email_notification_settings WHERE id = 1 LIMIT 1'
-      );
-      if (rows.length) {
-        return {
-          reservations_email: normalizeRecipientSetting(rows[0].reservations_email),
-          contact_email: normalizeRecipientSetting(rows[0].contact_email),
-          catering_email: normalizeRecipientSetting(rows[0].catering_email),
-          hiring_email: normalizeRecipientSetting(rows[0].hiring_email),
-        };
-      }
-    } catch (err) {
-      console.error('Unable to read email notification settings:', err.message);
-    }
-  }
-
-  return {
-    reservations_email: normalizeRecipientSetting(mockEmailNotificationSettings.reservations_email),
-    contact_email: normalizeRecipientSetting(mockEmailNotificationSettings.contact_email),
-    catering_email: normalizeRecipientSetting(mockEmailNotificationSettings.catering_email),
-    hiring_email: normalizeRecipientSetting(mockEmailNotificationSettings.hiring_email),
-  };
-}
-
-async function saveEmailNotificationSettings(input) {
-  const nextSettings = {
-    reservations_email: normalizeRecipientSetting(input?.reservations_email),
-    contact_email: normalizeRecipientSetting(input?.contact_email),
-    catering_email: normalizeRecipientSetting(input?.catering_email),
-    hiring_email: normalizeRecipientSetting(input?.hiring_email),
-  };
-
-  if (db) {
-    await db.query(
-      `INSERT INTO email_notification_settings (id, reservations_email, contact_email, catering_email, hiring_email)
-       VALUES (1, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         reservations_email = VALUES(reservations_email),
-         contact_email = VALUES(contact_email),
-         catering_email = VALUES(catering_email),
-         hiring_email = VALUES(hiring_email)`,
-      [nextSettings.reservations_email || null, nextSettings.contact_email || null, nextSettings.catering_email || null, nextSettings.hiring_email || null]
-    );
-  } else {
-    mockEmailNotificationSettings = { ...nextSettings };
-  }
-
-  return nextSettings;
-}
-
-async function sendReservationEmails(reservation, restaurant) {
-  const settings = await getEmailNotificationSettings();
-  const adminRecipients = splitRecipientEmails(settings.reservations_email);
-
-  if (!reservationTransporter) {
-    console.log('Reservation email skipped (reservation mailbox not configured). Reservation:', reservation.confirmation_code);
-    return;
-  }
-
-  try {
-    const restaurantName = restaurant?.name || 'Masakali Ottawa';
-    const formattedDate = formatReservationDate(reservation.date) || reservation.date;
-    const adminReservationLabel = `New Reservation - ${restaurantName}`;
-
-    // Customer confirmation
-    await reservationTransporter.sendMail({
-      from: `"Masakali Reservations" <${reservationEmailUser}>`,
-      to: reservation.email,
-      subject: `Reservation Confirmed - ${reservation.confirmation_code}`,
-      html: buildEmailShell({
-        title: 'Reservation Confirmation',
-        preheader: `Reservation confirmed - ${reservation.confirmation_code}`,
-        introHtml: `<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">Thank you for reserving with us. We are excited to host you.</p>`,
-        detailsHtml: buildReservationDetailsHtml(reservation, restaurantName),
-        ctaLabel: 'Manage My Reservation',
-        ctaUrl: MANAGE_RESERVATIONS_URL,
-        helperText: 'Need to change date, time, or guest count? Use the manage reservation page anytime.',
-        signatureRestaurant: restaurantName,
-      }),
-      text: `Thank you for reserving with Masakali Indian Cuisine.\n\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nEmail: ${reservation.email || 'N/A'}\nDate: ${formattedDate}\nTime: ${reservation.time}\nPhone: ${reservation.phone || 'N/A'}\nRestaurant: ${restaurantName}\nGuests: ${reservation.persons}\n${reservation.special_requests ? `Special Requests: ${reservation.special_requests}\n` : ''}\nNeed to update your booking? Visit: ${MANAGE_RESERVATIONS_URL}`,
-    });
-
-    // Admin notification
-    if (adminRecipients.length) {
-      await reservationTransporter.sendMail({
-        from: `"Masakali Reservations" <${reservationEmailUser}>`,
-        to: adminRecipients.join(', '),
-        replyTo: reservation.email,
-        subject: adminReservationLabel,
-        html: buildEmailShell({
-          title: adminReservationLabel,
-          preheader: `New reservation from ${reservation.name}`,
-          introHtml: '',
-          detailsHtml: buildAdminReservationDetailsHtml(reservation, restaurantName),
-          signatureRestaurant: restaurantName,
-        }),
-        text: `New reservation:\nConfirmation Code: ${reservation.confirmation_code}\nName: ${reservation.name}\nEmail: ${reservation.email || 'N/A'}\nDate: ${formattedDate}\nTime: ${reservation.time ? reservation.time.slice(0, 5) : 'N/A'}\nPhone: ${String(reservation.phone || '').replace(/^1/, '') || 'N/A'}\nBranch: ${restaurantName}\nGuests: ${reservation.persons}`,
-      });
-    } else {
-      console.log('Reservation admin alert skipped (no admin recipient configured). Reservation:', reservation.confirmation_code);
-    }
-  } catch (err) {
-    console.error('Reservation email error:', err.message);
-  }
-}
-
-async function sendReservationUpdateEmails(previousReservation, updatedReservation, restaurant) {
-  const settings = await getEmailNotificationSettings();
-  const adminRecipients = splitRecipientEmails(settings.reservations_email);
-
-  if (!reservationTransporter) {
-    console.log('Reservation update email skipped (reservation mailbox not configured). Reservation:', updatedReservation.confirmation_code);
-    return;
-  }
-
-  const oldDetails = `Date: ${formatReservationDate(previousReservation.date) || previousReservation.date}, Time: ${previousReservation.time ? previousReservation.time.slice(0, 5) : previousReservation.time}, Guests: ${previousReservation.persons}`;
-  const newDetails = `Date: ${formatReservationDate(updatedReservation.date) || updatedReservation.date}, Time: ${updatedReservation.time ? updatedReservation.time.slice(0, 5) : updatedReservation.time}, Guests: ${updatedReservation.persons}`;
-
-  try {
-    const restaurantName = restaurant?.name || 'Masakali Ottawa';
-
-    await reservationTransporter.sendMail({
-      from: `"Masakali Reservations" <${reservationEmailUser}>`,
-      to: updatedReservation.email,
-      subject: `Reservation Updated - ${updatedReservation.confirmation_code}`,
-      html: buildEmailShell({
-        title: 'Reservation Updated',
-        preheader: `Reservation updated - ${updatedReservation.confirmation_code}`,
-        introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">Your reservation has been updated successfully. Please review the latest details below.</p>',
-        detailsHtml: `
-          <p style="margin: 0 0 8px 0;"><strong>Confirmation Code:</strong> ${escapeHtml(updatedReservation.confirmation_code)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(updatedReservation.name)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Restaurant:</strong> ${escapeHtml(restaurantName)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Updated Details:</strong> ${escapeHtml(newDetails)}</p>
-          <p style="margin: 0;"><strong>Previous Details:</strong> ${escapeHtml(oldDetails)}</p>
-          ${updatedReservation.special_requests ? `<p style="margin: 10px 0 0 0;"><strong>Special Requests:</strong> ${escapeHtml(updatedReservation.special_requests)}</p>` : ''}
-        `,
-        ctaLabel: 'Manage My Reservation',
-        ctaUrl: MANAGE_RESERVATIONS_URL,
-        helperText: 'Need another edit? Open the manage reservation page.',
-        signatureRestaurant: restaurantName,
-      }),
-      text: `Your reservation has been updated.\n\nConfirmation Code: ${updatedReservation.confirmation_code}\nName: ${updatedReservation.name}\nRestaurant: ${restaurantName}\nUpdated: ${newDetails}\nPrevious: ${oldDetails}\n\nManage reservation: ${MANAGE_RESERVATIONS_URL}`,
-    });
-
-    if (adminRecipients.length) {
-      await reservationTransporter.sendMail({
-        from: `"Masakali Reservations" <${reservationEmailUser}>`,
-        to: adminRecipients.join(', '),
-        replyTo: updatedReservation.email,
-        subject: `Reservation Updated - ${updatedReservation.confirmation_code}`,
-        html: buildEmailShell({
-          title: 'Reservation Updated (Admin Alert)',
-          preheader: `Reservation updated - ${updatedReservation.confirmation_code}`,
-          introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A guest updated an existing reservation.</p>',
-          detailsHtml: `
-            <p style="margin: 0 0 8px 0;"><strong>Code:</strong> ${escapeHtml(updatedReservation.confirmation_code)}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(updatedReservation.name)}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(updatedReservation.email)}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(String(updatedReservation.phone || '').replace(/^1/, ''))}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Branch:</strong> ${escapeHtml(restaurantName)}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Previous:</strong> ${escapeHtml(oldDetails)}</p>
-            <p style="margin: 0;"><strong>Updated:</strong> ${escapeHtml(newDetails)}</p>
-          `,
-          signatureRestaurant: restaurantName,
-        }),
-        text: `Reservation updated:\nCode: ${updatedReservation.confirmation_code}\nName: ${updatedReservation.name}\nEmail: ${updatedReservation.email}\nPhone: ${String(updatedReservation.phone || '').replace(/^1/, '')}\nBranch: ${restaurant?.name || 'Masakali Ottawa'}\nPrevious: ${oldDetails}\nUpdated: ${newDetails}`,
-      });
-    }
-  } catch (err) {
-    console.error('Reservation update email error:', err.message);
-  }
-}
-
-async function sendCateringNotification(requestPayload) {
-  const settings = await getEmailNotificationSettings();
-  const recipients = splitRecipientEmails(settings.catering_email);
-  if (!recipients.length || !contactTransporter) return;
-
-  try {
-    await contactTransporter.sendMail({
-      from: `"Masakali Contact" <${contactEmailUser}>`,
-      to: recipients.join(', '),
-      replyTo: requestPayload.email,
-      subject: 'New Catering Request',
-      html: buildEmailShell({
-        title: 'New Catering Request',
-        preheader: `Catering request from ${requestPayload.name}`,
-        introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A new catering inquiry has been received from the website.</p>',
-        detailsHtml: `
-          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(requestPayload.name)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(requestPayload.email)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(requestPayload.phone || 'N/A')}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Event Date:</strong> ${escapeHtml(requestPayload.event_date || 'N/A')}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Guests:</strong> ${escapeHtml(requestPayload.guests || 'N/A')}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Location:</strong> ${escapeHtml(requestPayload.event_location || 'N/A')}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Type:</strong> ${escapeHtml(requestPayload.event_type || 'N/A')}</p>
-          <p style="margin: 0;"><strong>Notes:</strong> ${escapeHtml(requestPayload.notes || 'N/A')}</p>
-        `,
-        signatureRestaurant: 'Masakali Catering Team',
-      }),
-      text: `New catering request:\nName: ${requestPayload.name}\nEmail: ${requestPayload.email}\nPhone: ${requestPayload.phone}\nEvent Date: ${requestPayload.event_date || 'N/A'}\nGuests: ${requestPayload.guests || 'N/A'}\nLocation: ${requestPayload.event_location || 'N/A'}\nType: ${requestPayload.event_type || 'N/A'}\nNotes: ${requestPayload.notes || 'N/A'}`,
-    });
-  } catch (err) {
-    console.error('Catering notification email error:', err.message);
-  }
-}
-
-async function sendHiringApplicationNotification(application) {
-  const settings = await getEmailNotificationSettings();
-  const hiringRecipients = splitRecipientEmails(settings.hiring_email);
-
-  if (!contactTransporter) {
-    console.log('Hiring application email skipped (contact mailbox not configured).');
-    return;
-  }
-
-  if (!hiringRecipients.length) {
-    console.log('Hiring application email skipped (no hiring recipient configured).');
-    return;
-  }
-
-  const submittedAt = application?.created_at ? new Date(application.created_at).toLocaleString('en-US') : new Date().toLocaleString('en-US');
-  const resumeValue = application?.resume_file || 'Not uploaded';
-
-  try {
-    await contactTransporter.sendMail({
-      from: `"Hiring Notifications" <${contactEmailUser}>`,
-      to: hiringRecipients.join(', '),
-      replyTo: application?.email || contactEmailUser,
-      subject: 'New Join Our Team Application',
-      html: `
-        <div style="font-family:Verdana, Geneva, Tahoma, sans-serif;background:#f3f4f6;padding:20px;">
-          <div style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
-            <h2 style="margin:0 0 14px 0;color:#111827;">New Join Our Team Application</h2>
-            <table style="width:100%;border-collapse:collapse;">
-              <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Full Name</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(application?.full_name || '')}</td></tr>
-              <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Phone Number</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(application?.phone_number || '')}</td></tr>
-              <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Email</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(application?.email || '')}</td></tr>
-              <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Resume</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(resumeValue)}</td></tr>
-              <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Submitted</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(submittedAt)}</td></tr>
-            </table>
-          </div>
-        </div>
-      `,
-      text: `New Join Our Team Application\n\nFull Name: ${application?.full_name || ''}\nPhone Number: ${application?.phone_number || ''}\nEmail: ${application?.email || ''}\nResume: ${resumeValue}\nSubmitted: ${submittedAt}`,
-    });
-  } catch (err) {
-    console.error('Hiring application notification email error:', err.message);
-  }
-}
-
-async function sendContactNotification(inquiry) {
-  const settings = await getEmailNotificationSettings();
-  const recipients = splitRecipientEmails(settings.contact_email);
-  if (!recipients.length || !contactTransporter) return;
-
-  try {
-    await contactTransporter.sendMail({
-      from: `"Masakali Contact" <${contactEmailUser}>`,
-      to: recipients.join(', '),
-      replyTo: inquiry.email,
-      subject: 'New Contact Form Submission',
-      html: buildEmailShell({
-        title: 'New Contact Form Submission',
-        preheader: `Contact form from ${inquiry.name}`,
-        introHtml: '<p style="margin: 0; color: #e8e8e8; line-height: 1.6;">A guest sent a new message from the contact form.</p>',
-        detailsHtml: `
-          <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(inquiry.name)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(inquiry.email)}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Phone:</strong> ${escapeHtml(inquiry.phone || 'N/A')}</p>
-          <p style="margin: 0 0 8px 0;"><strong>Subject:</strong> ${escapeHtml(inquiry.subject || 'N/A')}</p>
-          <p style="margin: 0;"><strong>Message:</strong> ${escapeHtml(inquiry.message)}</p>
-        `,
-        signatureRestaurant: 'Masakali Guest Relations',
-      }),
-      text: `New contact inquiry:\nName: ${inquiry.name}\nEmail: ${inquiry.email}\nPhone: ${inquiry.phone || 'N/A'}\nSubject: ${inquiry.subject || 'N/A'}\nMessage: ${inquiry.message}`,
-    });
-  } catch (err) {
-    console.error('Contact notification email error:', err.message);
-  }
-}
+const {
+  sendReservationEmails,
+  sendReservationUpdateEmails,
+  sendCateringNotification,
+  sendHiringApplicationNotification,
+  sendContactNotification,
+  getEmailNotificationSettings,
+  saveEmailNotificationSettings,
+  createAdminNotification,
+  deriveServicePeriodFromTime,
+  dateRangeInclusive,
+  isReservationBlocked,
+  formatReservationDate,
+  escapeHtml,
+} = emailSystem;
 
 // =====================================================
 // Auth Middleware
@@ -2656,18 +2087,31 @@ app.post('/api/reservations', async (req, res) => {
       );
       const [rows] = await db.query('SELECT * FROM reservations WHERE id = ?', [result.insertId]);
       const [restaurants] = await db.query('SELECT * FROM restaurants WHERE id = ?', [restaurant_id]);
-      sendReservationEmails(rows[0], restaurants[0] || null);
-      emitAdminEvent('reservation.created', { reservation: rows[0] }, rows[0].restaurant_id);
-      createAdminNotification({
-        type: 'reservation',
-        title: 'New reservation',
-        message: 'New request submitted',
-        entity_type: 'reservation',
-        entity_id: rows[0].id,
-        restaurant_id: rows[0].restaurant_id,
-        payload_json: { reservation_id: rows[0].id, service_period: deriveServicePeriodFromTime(rows[0].time) },
+      const createdReservation = { ...rows[0] };
+      const createdRestaurant = restaurants[0] || null;
+      res.json(createdReservation);
+      setImmediate(() => {
+        try {
+          emitAdminEvent('reservation.created', { reservation: createdReservation }, createdReservation.restaurant_id);
+        } catch (eventErr) {
+          console.error('Reservation event error:', eventErr.message);
+        }
+        void sendReservationEmails(createdReservation, createdRestaurant).catch((emailErr) => {
+          console.error('Reservation email error:', emailErr.message);
+        });
+        void createAdminNotification({
+          type: 'reservation',
+          title: 'New reservation',
+          message: 'New request submitted',
+          entity_type: 'reservation',
+          entity_id: createdReservation.id,
+          restaurant_id: createdReservation.restaurant_id,
+          payload_json: { reservation_id: createdReservation.id, service_period: deriveServicePeriodFromTime(createdReservation.time) },
+        }).catch((notificationErr) => {
+          console.error('Reservation notification error:', notificationErr.message);
+        });
       });
-      return res.json(rows[0]);
+      return;
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Failed to create reservation.' });

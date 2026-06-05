@@ -202,12 +202,77 @@ CREATE TABLE IF NOT EXISTS email_notification_settings (
   reservations_email VARCHAR(255) DEFAULT NULL,
   contact_email VARCHAR(255) DEFAULT NULL,
   catering_email VARCHAR(255) DEFAULT NULL,
+  hiring_email VARCHAR(255) DEFAULT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-INSERT INTO email_notification_settings (id, reservations_email, contact_email, catering_email)
-VALUES (1, NULL, NULL, NULL)
+INSERT INTO email_notification_settings (id, reservations_email, contact_email, catering_email, hiring_email)
+VALUES (1, NULL, NULL, NULL, NULL)
 ON DUPLICATE KEY UPDATE id = id;
+
+-- =====================================================
+-- Email Templates
+-- Full default template bodies are seeded by server.js on first use.
+-- =====================================================
+CREATE TABLE IF NOT EXISTS email_templates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  template_key VARCHAR(100) NOT NULL,
+  restaurant_id INT NOT NULL DEFAULT 0,
+  display_name VARCHAR(160) NOT NULL,
+  subject_template VARCHAR(255) NOT NULL,
+  html_template MEDIUMTEXT NOT NULL,
+  text_template MEDIUMTEXT DEFAULT NULL,
+  available_variables_json JSON DEFAULT NULL,
+  is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  is_system TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_email_template_scope (template_key, restaurant_id)
+);
+
+DELETE et FROM email_templates et
+INNER JOIN email_templates newer
+  ON et.template_key = newer.template_key
+  AND COALESCE(et.restaurant_id, 0) = COALESCE(newer.restaurant_id, 0)
+  AND et.id < newer.id;
+
+UPDATE email_templates SET restaurant_id = 0 WHERE restaurant_id IS NULL;
+ALTER TABLE email_templates MODIFY restaurant_id INT NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS email_location_settings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id INT NULL,
+  location_slug VARCHAR(100) NOT NULL,
+  restaurant_name VARCHAR(255) NOT NULL,
+  address VARCHAR(500) NOT NULL,
+  phone VARCHAR(50) DEFAULT NULL,
+  business_hours VARCHAR(255) DEFAULT NULL,
+  online_order_url VARCHAR(500) DEFAULT NULL,
+  sort_order INT NOT NULL DEFAULT 1,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_email_location_slug (location_slug)
+);
+
+INSERT INTO email_location_settings
+(restaurant_id, location_slug, restaurant_name, address, phone, business_hours, online_order_url, sort_order)
+VALUES
+(1, 'stittsville', 'Masakali Indian Cuisine - Stittsville', '5507 Hazeldean Rd Unit C3-1, Stittsville, ON K2S 0P5', '(613) 878-3939', 'Mon-Sun: 11:30 AM - 10:00 PM', 'https://www.clover.com/online-ordering/masakali-indian-cuisine-ottawa', 1),
+(2, 'wellington', 'Masakali Indian Cuisine - Wellington', '1111 Wellington St. W, Ottawa, ON K1Y 1P1', '(613) 792-9777', 'Mon-Sun: 11:30 AM - 10:00 PM', 'https://www.clover.com/online-ordering/masakali-indian-cuisinew-ottawa', 2),
+(3, 'restobar', 'Masakali Indian Resto Bar - Byward Market', '97 Clarence St., Ottawa, ON K1N 5P9', '(613) 789-6777', 'Mon-Sun: 11:30 AM - 10:00 PM', 'https://www.clover.com/online-ordering/masakali-indian-restobar-ottawa', 3),
+(4, 'rangde', 'RangDe Indian Cuisine - Kanata', '700 March Rd Unit H, Kanata, ON K2K 2V9', '(613) 595-0777', 'Mon-Sun: 11:30 AM - 10:00 PM', 'https://www.clover.com/online-ordering/rangde-indian-cuisine-ottawa', 4),
+(5, 'montreal', 'Masakali Indian Cuisine - Montreal', '1015 Sherbrooke St W, Montreal, QC H3A 1G5', '(514) 228-6777', 'Mon-Sun: 11:30 AM - 10:00 PM', 'https://www.clover.com/online-ordering/masakali-montreal', 5),
+(6, 'california', 'Masakali Indian Cuisine - California', '10310 S De Anza Blvd, Cupertino, CA 95014', '(408) 352-5097', 'Mon-Sun: 11:30 AM - 10:00 PM', 'https://www.clover.com/online-ordering/masakali-indian-cuisinec-cupertino', 6)
+ON DUPLICATE KEY UPDATE
+restaurant_id = VALUES(restaurant_id),
+restaurant_name = VALUES(restaurant_name),
+address = VALUES(address),
+phone = VALUES(phone),
+business_hours = VALUES(business_hours),
+online_order_url = VALUES(online_order_url),
+sort_order = VALUES(sort_order),
+is_active = 1;
 
 -- =====================================================
 -- Seed Data: Restaurants
