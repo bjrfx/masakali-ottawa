@@ -69,6 +69,10 @@ export const api = {
     const query = new URLSearchParams(params).toString();
     return apiCall(`/reservations${query ? `?${query}` : ''}`);
   },
+  getReservationAvailability: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiCall(`/reservation-availability${query ? `?${query}` : ''}`, { auth: false });
+  },
   createReservation: (data) => apiCall('/reservations', { method: 'POST', body: JSON.stringify(data), auth: false }),
   findManageReservations: (email, phone) => apiCall('/reservations/manage', { method: 'POST', body: JSON.stringify({ email, phone }), auth: false }),
   updateManagedReservation: (id, data) => apiCall(`/reservations/manage/${id}`, { method: 'PUT', body: JSON.stringify(data), auth: false }),
