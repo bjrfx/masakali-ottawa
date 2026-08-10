@@ -95,6 +95,7 @@ function OrderSummary({ cart, currency, taxRate, onQty, onRemove, onClear, onChe
   const tax = subtotal * Number(taxRate || 0);
   const total = subtotal + tax;
 
+  
   return (
     <aside className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xl shadow-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-none lg:sticky lg:top-28">
       <div className="mb-5 flex items-center justify-between">
