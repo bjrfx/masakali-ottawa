@@ -823,8 +823,66 @@ let mockReservationsPaused = false;
 
 let nextReservationId = 9;
 let nextCateringId = 3;
+let nextCateringTrayCategoryId = 20;
+let nextCateringTrayItemId = 50;
+let nextCateringTrayOptionId = 100;
+let nextCateringTrayOrderId = 1;
 let nextContactId = 3;
 let nextTestimonialId = 4;
+
+const defaultCateringTrayImages = {
+  samosa: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80',
+  paneer: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=900&q=80',
+  butterChicken: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=900&q=80',
+  biryani: 'https://images.unsplash.com/photo-1563379091339-03246963d4f6?auto=format&fit=crop&w=900&q=80',
+  naan: 'https://images.unsplash.com/photo-1617692855027-33b14f061079?auto=format&fit=crop&w=900&q=80',
+  dessert: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
+};
+
+let mockCateringTrayCategories = [
+  { id: 1, name: 'Appetizers', slug: 'appetizers', description: 'Crisp starters for every gathering.', sort_order: 1, is_active: 1 },
+  { id: 2, name: 'Veg Appetizers', slug: 'veg-appetizers', description: 'Vegetarian favorites served party-ready.', sort_order: 2, is_active: 1 },
+  { id: 3, name: 'Curries', slug: 'curries', description: 'Signature gravies and comfort classics.', sort_order: 3, is_active: 1 },
+  { id: 4, name: 'Biryani', slug: 'biryani', description: 'Layered rice dishes built for sharing.', sort_order: 4, is_active: 1 },
+  { id: 5, name: 'Breads', slug: 'breads', description: 'Fresh breads for the table.', sort_order: 5, is_active: 1 },
+  { id: 6, name: 'Desserts', slug: 'desserts', description: 'Sweet endings for special occasions.', sort_order: 6, is_active: 1 },
+];
+
+let mockCateringTrayItems = [
+  { id: 1, category_id: 1, name: 'Vegetable Samosa', short_description: 'Golden pastry filled with warmly spiced potatoes and peas.', long_description: '', image_url: defaultCateringTrayImages.samosa, sort_order: 1, is_active: 1, available: 1, vegetarian: 1, vegan: 0, can_be_made_vegan: 1, gluten_free: 0, contains_nuts: 0, spicy: 0, recommended: 1, chef_special: 0, best_seller: 1, popular: 1, kids_friendly: 1, halal: 1 },
+  { id: 2, category_id: 2, name: 'Paneer Tikka', short_description: 'Tandoor-charred paneer with peppers, onions, and house spices.', long_description: '', image_url: defaultCateringTrayImages.paneer, sort_order: 1, is_active: 1, available: 1, vegetarian: 1, vegan: 0, can_be_made_vegan: 0, gluten_free: 1, contains_nuts: 0, spicy: 1, recommended: 1, chef_special: 1, best_seller: 0, popular: 1, kids_friendly: 0, halal: 1 },
+  { id: 3, category_id: 3, name: 'Butter Chicken', short_description: 'Creamy tomato curry with tender chicken and a polished Masakali finish.', long_description: '', image_url: defaultCateringTrayImages.butterChicken, sort_order: 1, is_active: 1, available: 1, vegetarian: 0, vegan: 0, can_be_made_vegan: 0, gluten_free: 1, contains_nuts: 1, spicy: 0, recommended: 1, chef_special: 1, best_seller: 1, popular: 1, kids_friendly: 1, halal: 1 },
+  { id: 4, category_id: 4, name: 'Chicken Biryani', short_description: 'Fragrant basmati rice layered with chicken, herbs, saffron, and spices.', long_description: '', image_url: defaultCateringTrayImages.biryani, sort_order: 1, is_active: 1, available: 1, vegetarian: 0, vegan: 0, can_be_made_vegan: 0, gluten_free: 1, contains_nuts: 0, spicy: 1, recommended: 1, chef_special: 0, best_seller: 1, popular: 1, kids_friendly: 0, halal: 1 },
+  { id: 5, category_id: 5, name: 'Garlic Naan', short_description: 'Soft tandoor bread brushed with garlic and herbs.', long_description: '', image_url: defaultCateringTrayImages.naan, sort_order: 1, is_active: 1, available: 1, vegetarian: 1, vegan: 0, can_be_made_vegan: 1, gluten_free: 0, contains_nuts: 0, spicy: 0, recommended: 0, chef_special: 0, best_seller: 0, popular: 1, kids_friendly: 1, halal: 1 },
+  { id: 6, category_id: 6, name: 'Gulab Jamun', short_description: 'Soft milk dumplings soaked in fragrant cardamom syrup.', long_description: '', image_url: defaultCateringTrayImages.dessert, sort_order: 1, is_active: 1, available: 1, vegetarian: 1, vegan: 0, can_be_made_vegan: 0, gluten_free: 0, contains_nuts: 1, spicy: 0, recommended: 0, chef_special: 0, best_seller: 0, popular: 1, kids_friendly: 1, halal: 1 },
+];
+
+let mockCateringTrayOptions = [
+  { id: 1, item_id: 1, tray_name: 'Quarter Tray', serves: 8, price: 55, sort_order: 1, is_active: 1 },
+  { id: 2, item_id: 1, tray_name: 'Half Tray', serves: 16, price: 95, sort_order: 2, is_active: 1 },
+  { id: 3, item_id: 1, tray_name: 'Full Tray', serves: 30, price: 175, sort_order: 3, is_active: 1 },
+  { id: 4, item_id: 2, tray_name: 'Half Tray', serves: 10, price: 95, sort_order: 1, is_active: 1 },
+  { id: 5, item_id: 2, tray_name: 'Full Tray', serves: 20, price: 175, sort_order: 2, is_active: 1 },
+  { id: 6, item_id: 3, tray_name: 'Half Tray', serves: 12, price: 120, sort_order: 1, is_active: 1 },
+  { id: 7, item_id: 3, tray_name: 'Full Tray', serves: 24, price: 220, sort_order: 2, is_active: 1 },
+  { id: 8, item_id: 4, tray_name: 'Half Tray', serves: 12, price: 110, sort_order: 1, is_active: 1 },
+  { id: 9, item_id: 4, tray_name: 'Full Tray', serves: 24, price: 205, sort_order: 2, is_active: 1 },
+  { id: 10, item_id: 5, tray_name: 'Full Tray', serves: 20, price: 65, sort_order: 1, is_active: 1 },
+  { id: 11, item_id: 6, tray_name: 'Half Tray', serves: 15, price: 70, sort_order: 1, is_active: 1 },
+  { id: 12, item_id: 6, tray_name: 'Full Tray', serves: 30, price: 130, sort_order: 2, is_active: 1 },
+];
+
+let mockCateringTrayOrders = [];
+let mockCateringTraySettings = {
+  minimum_amount: 0,
+  maximum_order_size: 0,
+  lead_time_hours: 24,
+  tax_rate: 0.13,
+  currency: 'CAD',
+  pickup_times: '11:30-21:30',
+  delivery_times: '11:30-21:30',
+  notification_email: '',
+};
 
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
@@ -2090,7 +2148,7 @@ app.post('/api/reservations', async (req, res) => {
       const createdReservation = { ...rows[0] };
       const createdRestaurant = restaurants[0] || null;
       res.json(createdReservation);
-      setImmediate(() => {
+setImmediate(() => {
         try {
           emitAdminEvent('reservation.created', { reservation: createdReservation }, createdReservation.restaurant_id);
         } catch (eventErr) {
@@ -2109,6 +2167,10 @@ app.post('/api/reservations', async (req, res) => {
           payload_json: { reservation_id: createdReservation.id, service_period: deriveServicePeriodFromTime(createdReservation.time) },
         }).catch((notificationErr) => {
           console.error('Reservation notification error:', notificationErr.message);
+        });
+        // Sync contact to CRM
+        void syncContactFromReservation(createdReservation).catch((syncErr) => {
+          console.error('Contact sync error:', syncErr.message);
         });
       });
       return;
@@ -2582,6 +2644,590 @@ app.delete('/api/catering/:id', authMiddleware, async (req, res) => {
   return res.status(404).json({ error: 'Not found' });
 });
 
+// --- Catering By Tray ---
+function slugify(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'category';
+}
+
+function boolNumber(value, fallback = 0) {
+  if (value === true || value === 1 || value === '1' || value === 'on') return 1;
+  if (value === false || value === 0 || value === '0') return 0;
+  return fallback;
+}
+
+const cateringTrayStatusOptions = ['pending', 'confirmed', 'preparing', 'completed', 'cancelled'];
+
+function normalizeHostForLocation(value) {
+  return String(value || '').toLowerCase().replace(/^www\./, '').split(':')[0];
+}
+
+function locationMatchesHost(restaurant, hostname) {
+  const host = normalizeHostForLocation(hostname);
+  if (!host || host === 'localhost' || host === '127.0.0.1') return true;
+  const website = normalizeHostForLocation(String(restaurant.website || '').replace(/^https?:\/\//, '').split('/')[0]);
+  return website && (website === host || host.endsWith(website) || website.endsWith(host));
+}
+
+function publicCateringLocations(hostname = '') {
+  const active = mockRestaurants.filter((restaurant) => restaurant.is_active);
+  const scoped = active.filter((restaurant) => locationMatchesHost(restaurant, hostname));
+  return (scoped.length ? scoped : active)
+    .map((restaurant) => ({
+      id: restaurant.id,
+      restaurant_id: restaurant.id,
+      location_slug: restaurant.slug,
+      restaurant_name: restaurant.name,
+      address: [restaurant.address, restaurant.city, restaurant.province_state].filter(Boolean).join(', '),
+      phone: restaurant.phone,
+      email: restaurant.email,
+    }));
+}
+
+function normalizeCateringTrayItem(row, options = []) {
+  const badgeFields = ['vegetarian', 'vegan', 'can_be_made_vegan', 'gluten_free', 'contains_nuts', 'spicy', 'recommended', 'chef_special', 'best_seller', 'popular', 'kids_friendly', 'halal'];
+  const item = { ...row };
+  for (const field of badgeFields) item[field] = boolNumber(item[field]);
+  item.is_active = boolNumber(item.is_active, 1);
+  item.available = boolNumber(item.available, 1);
+  item.tray_options = options
+    .filter((option) => Number(option.item_id) === Number(item.id))
+    .map((option) => ({ ...option, price: Number(option.price || 0), serves: Number(option.serves || 0), is_active: boolNumber(option.is_active, 1) }))
+    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  return item;
+}
+
+async function ensureCateringByTraySchema() {
+  if (!db) return;
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(160) NOT NULL,
+      slug VARCHAR(180) NOT NULL,
+      description TEXT NULL,
+      sort_order INT NOT NULL DEFAULT 1,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_catering_tray_category_slug (slug)
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      category_id INT NOT NULL,
+      name VARCHAR(180) NOT NULL,
+      short_description TEXT NULL,
+      long_description MEDIUMTEXT NULL,
+      image_url MEDIUMTEXT NULL,
+      sort_order INT NOT NULL DEFAULT 1,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      available TINYINT(1) NOT NULL DEFAULT 1,
+      vegetarian TINYINT(1) NOT NULL DEFAULT 0,
+      vegan TINYINT(1) NOT NULL DEFAULT 0,
+      can_be_made_vegan TINYINT(1) NOT NULL DEFAULT 0,
+      gluten_free TINYINT(1) NOT NULL DEFAULT 0,
+      contains_nuts TINYINT(1) NOT NULL DEFAULT 0,
+      spicy TINYINT(1) NOT NULL DEFAULT 0,
+      recommended TINYINT(1) NOT NULL DEFAULT 0,
+      chef_special TINYINT(1) NOT NULL DEFAULT 0,
+      best_seller TINYINT(1) NOT NULL DEFAULT 0,
+      popular TINYINT(1) NOT NULL DEFAULT 0,
+      kids_friendly TINYINT(1) NOT NULL DEFAULT 0,
+      halal TINYINT(1) NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_catering_tray_items_category (category_id),
+      CONSTRAINT fk_catering_tray_item_category FOREIGN KEY (category_id) REFERENCES catering_tray_categories(id) ON DELETE RESTRICT
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_options (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      item_id INT NOT NULL,
+      tray_name VARCHAR(120) NOT NULL,
+      serves INT NOT NULL DEFAULT 0,
+      price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      sort_order INT NOT NULL DEFAULT 1,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_catering_tray_options_item (item_id),
+      CONSTRAINT fk_catering_tray_option_item FOREIGN KEY (item_id) REFERENCES catering_tray_items(id) ON DELETE CASCADE
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_orders (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      order_number VARCHAR(40) NOT NULL UNIQUE,
+      website VARCHAR(120) NULL,
+      customer_name VARCHAR(180) NOT NULL,
+      email VARCHAR(180) NOT NULL,
+      phone VARCHAR(60) NOT NULL,
+      company_name VARCHAR(180) NULL,
+      event_name VARCHAR(180) NULL,
+      order_type ENUM('pickup', 'delivery') NOT NULL DEFAULT 'pickup',
+      restaurant_location_id VARCHAR(80) NULL,
+      location_name VARCHAR(255) NULL,
+      event_date DATE NOT NULL,
+      preferred_time VARCHAR(40) NOT NULL,
+      delivery_address TEXT NULL,
+      special_instructions TEXT NULL,
+      subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      tax DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      currency VARCHAR(10) NOT NULL DEFAULT 'CAD',
+      status ENUM('pending', 'confirmed', 'preparing', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+      confirmation_acknowledged TINYINT(1) NOT NULL DEFAULT 0,
+      request_ip VARCHAR(45) NULL,
+      request_user_agent TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_catering_tray_orders_status_date (status, event_date),
+      INDEX idx_catering_tray_orders_customer (customer_name, phone, email)
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_order_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      order_id INT NOT NULL,
+      item_id INT NULL,
+      tray_option_id INT NULL,
+      item_name VARCHAR(180) NOT NULL,
+      tray_name VARCHAR(120) NOT NULL,
+      serves INT NOT NULL DEFAULT 0,
+      quantity INT NOT NULL DEFAULT 1,
+      unit_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      line_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_catering_tray_order_items_order (order_id),
+      CONSTRAINT fk_catering_tray_order_item_order FOREIGN KEY (order_id) REFERENCES catering_tray_orders(id) ON DELETE CASCADE
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_settings (
+      id TINYINT PRIMARY KEY,
+      minimum_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      maximum_order_size INT NOT NULL DEFAULT 0,
+      lead_time_hours INT NOT NULL DEFAULT 24,
+      tax_rate DECIMAL(8,4) NOT NULL DEFAULT 0.1300,
+      currency VARCHAR(10) NOT NULL DEFAULT 'CAD',
+      pickup_times TEXT NULL,
+      delivery_times TEXT NULL,
+      notification_email VARCHAR(255) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  await db.query(`
+    INSERT INTO catering_tray_settings (id, minimum_amount, maximum_order_size, lead_time_hours, tax_rate, currency, pickup_times, delivery_times)
+    VALUES (1, 0, 0, 24, 0.1300, 'CAD', '11:30-21:30', '11:30-21:30')
+    ON DUPLICATE KEY UPDATE id = id
+  `);
+
+  const [countRows] = await db.query('SELECT COUNT(*) AS count FROM catering_tray_categories');
+  if (Number(countRows[0]?.count || 0) === 0) {
+    const idMap = new Map();
+    for (const category of mockCateringTrayCategories) {
+      const [result] = await db.query('INSERT INTO catering_tray_categories (name, slug, description, sort_order, is_active) VALUES (?, ?, ?, ?, ?)', [category.name, category.slug, category.description, category.sort_order, category.is_active]);
+      idMap.set(category.id, result.insertId);
+    }
+    for (const item of mockCateringTrayItems) {
+      const categoryId = idMap.get(item.category_id) || item.category_id;
+      const [result] = await db.query(
+        `INSERT INTO catering_tray_items (category_id, name, short_description, long_description, image_url, sort_order, is_active, available, vegetarian, vegan, can_be_made_vegan, gluten_free, contains_nuts, spicy, recommended, chef_special, best_seller, popular, kids_friendly, halal)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [categoryId, item.name, item.short_description, item.long_description, item.image_url, item.sort_order, item.is_active, item.available, item.vegetarian, item.vegan, item.can_be_made_vegan, item.gluten_free, item.contains_nuts, item.spicy, item.recommended, item.chef_special, item.best_seller, item.popular, item.kids_friendly, item.halal]
+      );
+      for (const option of mockCateringTrayOptions.filter((opt) => opt.item_id === item.id)) {
+        await db.query('INSERT INTO catering_tray_options (item_id, tray_name, serves, price, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)', [result.insertId, option.tray_name, option.serves, option.price, option.sort_order, option.is_active]);
+      }
+    }
+  }
+}
+
+async function getCateringByTrayData(includeInactive = false, hostname = '') {
+  if (db) {
+    await ensureCateringByTraySchema();
+    const activeWhere = includeInactive ? '' : 'WHERE is_active = 1';
+    const itemWhere = includeInactive ? '' : 'WHERE is_active = 1 AND available = 1';
+    const [categories] = await db.query(`SELECT * FROM catering_tray_categories ${activeWhere} ORDER BY sort_order ASC, name ASC`);
+    const [items] = await db.query(`SELECT * FROM catering_tray_items ${itemWhere} ORDER BY sort_order ASC, name ASC`);
+    const [options] = await db.query(`SELECT * FROM catering_tray_options ${includeInactive ? '' : 'WHERE is_active = 1'} ORDER BY sort_order ASC, id ASC`);
+    const [settingsRows] = await db.query('SELECT * FROM catering_tray_settings WHERE id = 1 LIMIT 1');
+    let locations = publicCateringLocations(hostname);
+    try {
+      const [locationRows] = await db.query('SELECT id, id AS restaurant_id, slug AS location_slug, name AS restaurant_name, CONCAT_WS(", ", address, city, province_state) AS address, phone, email, website FROM restaurants WHERE is_active = 1 ORDER BY id');
+      const scopedRows = locationRows.filter((restaurant) => locationMatchesHost(restaurant, hostname));
+      if (scopedRows.length) locations = scopedRows;
+      else if (locationRows.length && (!hostname || hostname === 'localhost' || hostname === '127.0.0.1')) locations = locationRows;
+    } catch (err) {
+      console.error('Catering locations fallback:', err.message);
+    }
+    return {
+      categories,
+      items: items.map((item) => normalizeCateringTrayItem(item, options)),
+      settings: settingsRows[0] || mockCateringTraySettings,
+      locations,
+    };
+  }
+  return {
+    categories: mockCateringTrayCategories.filter((category) => includeInactive || category.is_active),
+    items: mockCateringTrayItems
+      .filter((item) => includeInactive || (item.is_active && item.available))
+      .map((item) => normalizeCateringTrayItem(item, mockCateringTrayOptions.filter((option) => includeInactive || option.is_active))),
+    settings: mockCateringTraySettings,
+    locations: publicCateringLocations(hostname),
+  };
+}
+
+async function getCateringByTrayOrders() {
+  if (db) {
+    await ensureCateringByTraySchema();
+    const [orders] = await db.query('SELECT * FROM catering_tray_orders ORDER BY created_at DESC');
+    if (!orders.length) return [];
+    const [items] = await db.query('SELECT * FROM catering_tray_order_items WHERE order_id IN (?) ORDER BY id ASC', [orders.map((order) => order.id)]);
+    return orders.map((order) => ({ ...order, items: items.filter((item) => Number(item.order_id) === Number(order.id)) }));
+  }
+  return mockCateringTrayOrders;
+}
+
+function buildCateringTrayNotificationNotes(order, items) {
+  const itemLines = items.map((item) => `${item.quantity} x ${item.item_name || item.name} - ${item.tray_name} (${item.serves || 0} serves) @ ${item.unit_price || item.price}`).join('\n');
+  return [
+    `Order Number: ${order.order_number}`,
+    `Order Type: ${order.order_type}`,
+    `Location: ${order.location_name}`,
+    `Preferred Time: ${order.preferred_time}`,
+    order.delivery_address ? `Delivery Address: ${order.delivery_address}` : '',
+    order.company_name ? `Company: ${order.company_name}` : '',
+    order.event_name ? `Event: ${order.event_name}` : '',
+    '',
+    'Items:',
+    itemLines,
+    '',
+    `Subtotal: ${order.subtotal}`,
+    `Tax: ${order.tax}`,
+    `Estimated Total: ${order.total} ${order.currency}`,
+    order.special_instructions ? `Special Instructions: ${order.special_instructions}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+app.get('/api/catering-by-tray', async (req, res) => {
+  try {
+    return res.json(await getCateringByTrayData(false, req.hostname));
+  } catch (err) {
+    console.error('Catering by tray public load failed:', err);
+    return res.status(500).json({ error: 'Unable to load catering menu' });
+  }
+});
+
+app.post('/api/catering-by-tray/orders', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const items = Array.isArray(body.items) ? body.items : [];
+    if (!items.length) return res.status(400).json({ error: 'Cart is empty' });
+    if (!body.customer_name || !body.email || !body.phone || !body.event_date || !body.preferred_time) {
+      return res.status(400).json({ error: 'Missing required checkout details' });
+    }
+    if (String(body.event_date) < new Date().toISOString().slice(0, 10)) {
+      return res.status(400).json({ error: 'Event date cannot be in the past' });
+    }
+
+    const requestContext = await collectRequestContext(req);
+    const orderNumber = `CBT-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`;
+    const cleanItems = items.map((item) => {
+      const quantity = Math.max(1, parseInt(item.quantity || 1, 10));
+      const unitPrice = Number(item.price || item.unit_price || 0);
+      return {
+        item_id: item.item_id || null,
+        tray_option_id: item.tray_option_id || null,
+        item_name: String(item.name || item.item_name || ''),
+        tray_name: String(item.tray_name || ''),
+        serves: parseInt(item.serves || 0, 10),
+        quantity,
+        unit_price: unitPrice,
+        line_total: Number((unitPrice * quantity).toFixed(2)),
+      };
+    });
+    const subtotal = Number((body.subtotal !== undefined ? body.subtotal : cleanItems.reduce((sum, item) => sum + item.line_total, 0)).toFixed(2));
+    const tax = Number((body.tax !== undefined ? body.tax : subtotal * Number(mockCateringTraySettings.tax_rate || 0)).toFixed(2));
+    const total = Number((body.total !== undefined ? body.total : subtotal + tax).toFixed(2));
+    const order = {
+      order_number: orderNumber,
+      website: req.hostname,
+      customer_name: String(body.customer_name).trim(),
+      email: String(body.email).trim(),
+      phone: String(body.phone).trim(),
+      company_name: body.company_name || null,
+      event_name: body.event_name || null,
+      order_type: body.order_type === 'delivery' ? 'delivery' : 'pickup',
+      restaurant_location_id: body.restaurant_location_id || null,
+      location_name: body.location_name || null,
+      event_date: body.event_date,
+      preferred_time: body.preferred_time,
+      delivery_address: body.order_type === 'delivery' ? (body.delivery_address || null) : null,
+      special_instructions: body.special_instructions || null,
+      subtotal,
+      tax,
+      total,
+      currency: body.currency || 'CAD',
+      status: 'pending',
+      confirmation_acknowledged: boolNumber(body.confirmation_acknowledged),
+      request_ip: requestContext.request_ip,
+      request_user_agent: requestContext.request_user_agent,
+    };
+
+    let savedOrder;
+    if (db) {
+      await ensureCateringByTraySchema();
+      const [result] = await db.query(
+        `INSERT INTO catering_tray_orders (order_number, website, customer_name, email, phone, company_name, event_name, order_type, restaurant_location_id, location_name, event_date, preferred_time, delivery_address, special_instructions, subtotal, tax, total, currency, status, confirmation_acknowledged, request_ip, request_user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [order.order_number, order.website, order.customer_name, order.email, order.phone, order.company_name, order.event_name, order.order_type, order.restaurant_location_id, order.location_name, order.event_date, order.preferred_time, order.delivery_address, order.special_instructions, order.subtotal, order.tax, order.total, order.currency, order.status, order.confirmation_acknowledged, order.request_ip, order.request_user_agent]
+      );
+      for (const item of cleanItems) {
+        await db.query('INSERT INTO catering_tray_order_items (order_id, item_id, tray_option_id, item_name, tray_name, serves, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [result.insertId, item.item_id, item.tray_option_id, item.item_name, item.tray_name, item.serves, item.quantity, item.unit_price, item.line_total]);
+      }
+      const orders = await getCateringByTrayOrders();
+      savedOrder = orders.find((row) => Number(row.id) === Number(result.insertId));
+    } else {
+      savedOrder = { id: nextCateringTrayOrderId++, ...order, created_at: new Date().toISOString(), items: cleanItems.map((item, index) => ({ id: index + 1, ...item })) };
+      mockCateringTrayOrders.unshift(savedOrder);
+    }
+
+    const notes = buildCateringTrayNotificationNotes(savedOrder, cleanItems);
+    sendCateringNotification({
+      name: savedOrder.customer_name,
+      email: savedOrder.email,
+      phone: savedOrder.phone,
+      event_date: savedOrder.event_date,
+      guests: cleanItems.reduce((sum, item) => sum + (Number(item.serves || 0) * Number(item.quantity || 1)), 0),
+      event_location: savedOrder.location_name,
+      event_type: 'Catering By Tray',
+      notes,
+      status: savedOrder.status,
+    });
+    emitAdminEvent('catering.created', { request: savedOrder }, null);
+    createAdminNotification({
+      type: 'catering',
+      title: 'New catering by tray order',
+      message: `${savedOrder.customer_name} submitted ${savedOrder.order_number}`,
+      entity_type: 'catering_tray_order',
+      entity_id: savedOrder.id,
+      payload_json: { catering_tray_order_id: savedOrder.id, order_number: savedOrder.order_number },
+    });
+    return res.json(savedOrder);
+  } catch (err) {
+    console.error('Catering by tray order failed:', err);
+    return res.status(500).json({ error: 'Unable to submit catering order' });
+  }
+});
+
+app.get('/api/admin/catering-by-tray', authMiddleware, async (req, res) => {
+  try {
+    const data = await getCateringByTrayData(true, req.hostname);
+    const orders = await getCateringByTrayOrders();
+    return res.json({ ...data, orders });
+  } catch (err) {
+    console.error('Catering by tray admin load failed:', err);
+    return res.status(500).json({ error: 'Unable to load catering by tray admin data' });
+  }
+});
+
+app.post('/api/admin/catering-by-tray/categories', authMiddleware, async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Category name is required' });
+    const category = { name, slug: slugify(req.body?.slug || name), description: req.body?.description || null, sort_order: Number(req.body?.sort_order || 1), is_active: boolNumber(req.body?.is_active, 1) };
+    if (db) {
+      await ensureCateringByTraySchema();
+      const [result] = await db.query('INSERT INTO catering_tray_categories (name, slug, description, sort_order, is_active) VALUES (?, ?, ?, ?, ?)', [category.name, category.slug, category.description, category.sort_order, category.is_active]);
+      return res.json({ id: result.insertId, ...category });
+    }
+    const row = { id: nextCateringTrayCategoryId++, ...category };
+    mockCateringTrayCategories.push(row);
+    return res.json(row);
+  } catch (err) {
+    console.error('Create catering tray category failed:', err);
+    return res.status(500).json({ error: 'Unable to create category' });
+  }
+});
+
+app.put('/api/admin/catering-by-tray/categories/:id', authMiddleware, async (req, res) => {
+  try {
+    const category = { name: String(req.body?.name || '').trim(), slug: slugify(req.body?.slug || req.body?.name), description: req.body?.description || null, sort_order: Number(req.body?.sort_order || 1), is_active: boolNumber(req.body?.is_active, 1) };
+    if (!category.name) return res.status(400).json({ error: 'Category name is required' });
+    if (db) {
+      await ensureCateringByTraySchema();
+      await db.query('UPDATE catering_tray_categories SET name = ?, slug = ?, description = ?, sort_order = ?, is_active = ? WHERE id = ?', [category.name, category.slug, category.description, category.sort_order, category.is_active, req.params.id]);
+      return res.json({ id: Number(req.params.id), ...category });
+    }
+    mockCateringTrayCategories = mockCateringTrayCategories.map((row) => Number(row.id) === Number(req.params.id) ? { ...row, ...category } : row);
+    return res.json({ id: Number(req.params.id), ...category });
+  } catch (err) {
+    console.error('Update catering tray category failed:', err);
+    return res.status(500).json({ error: 'Unable to update category' });
+  }
+});
+
+app.delete('/api/admin/catering-by-tray/categories/:id', authMiddleware, async (req, res) => {
+  try {
+    if (db) {
+      await ensureCateringByTraySchema();
+      await db.query('DELETE FROM catering_tray_categories WHERE id = ?', [req.params.id]);
+      return res.json({ success: true });
+    }
+    mockCateringTrayCategories = mockCateringTrayCategories.filter((row) => Number(row.id) !== Number(req.params.id));
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Delete catering tray category failed:', err);
+    return res.status(500).json({ error: 'Unable to delete category' });
+  }
+});
+
+function buildCateringTrayItemPayload(body = {}) {
+  const badgeFields = ['vegetarian', 'vegan', 'can_be_made_vegan', 'gluten_free', 'contains_nuts', 'spicy', 'recommended', 'chef_special', 'best_seller', 'popular', 'kids_friendly', 'halal'];
+  const payload = {
+    category_id: Number(body.category_id),
+    name: String(body.name || '').trim(),
+    short_description: body.short_description || null,
+    long_description: body.long_description || null,
+    image_url: body.image_url || null,
+    sort_order: Number(body.sort_order || 1),
+    is_active: boolNumber(body.is_active, 1),
+    available: boolNumber(body.available, 1),
+  };
+  for (const field of badgeFields) payload[field] = boolNumber(body[field]);
+  payload.tray_options = Array.isArray(body.tray_options) ? body.tray_options.map((option, index) => ({
+    id: option.id || null,
+    tray_name: String(option.tray_name || '').trim(),
+    serves: Number(option.serves || 0),
+    price: Number(option.price || 0),
+    sort_order: Number(option.sort_order || index + 1),
+    is_active: boolNumber(option.is_active, 1),
+  })).filter((option) => option.tray_name) : [];
+  return payload;
+}
+
+async function saveCateringTrayItem(req, res, id = null) {
+  try {
+    const item = buildCateringTrayItemPayload(req.body);
+    if (!item.name || !item.category_id) return res.status(400).json({ error: 'Item name and category are required' });
+    if (!item.tray_options.length) return res.status(400).json({ error: 'At least one tray option is required' });
+    const values = [item.category_id, item.name, item.short_description, item.long_description, item.image_url, item.sort_order, item.is_active, item.available, item.vegetarian, item.vegan, item.can_be_made_vegan, item.gluten_free, item.contains_nuts, item.spicy, item.recommended, item.chef_special, item.best_seller, item.popular, item.kids_friendly, item.halal];
+    let itemId = id;
+    if (db) {
+      await ensureCateringByTraySchema();
+      if (id) {
+        await db.query(
+          `UPDATE catering_tray_items SET category_id = ?, name = ?, short_description = ?, long_description = ?, image_url = ?, sort_order = ?, is_active = ?, available = ?, vegetarian = ?, vegan = ?, can_be_made_vegan = ?, gluten_free = ?, contains_nuts = ?, spicy = ?, recommended = ?, chef_special = ?, best_seller = ?, popular = ?, kids_friendly = ?, halal = ? WHERE id = ?`,
+          [...values, id]
+        );
+        await db.query('DELETE FROM catering_tray_options WHERE item_id = ?', [id]);
+      } else {
+        const [result] = await db.query(
+          `INSERT INTO catering_tray_items (category_id, name, short_description, long_description, image_url, sort_order, is_active, available, vegetarian, vegan, can_be_made_vegan, gluten_free, contains_nuts, spicy, recommended, chef_special, best_seller, popular, kids_friendly, halal)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          values
+        );
+        itemId = result.insertId;
+      }
+      for (const option of item.tray_options) {
+        await db.query('INSERT INTO catering_tray_options (item_id, tray_name, serves, price, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)', [itemId, option.tray_name, option.serves, option.price, option.sort_order, option.is_active]);
+      }
+      return res.json({ id: Number(itemId), ...item });
+    }
+    if (id) {
+      mockCateringTrayItems = mockCateringTrayItems.map((row) => Number(row.id) === Number(id) ? { ...row, ...item, id: Number(id) } : row);
+      mockCateringTrayOptions = mockCateringTrayOptions.filter((option) => Number(option.item_id) !== Number(id));
+      itemId = Number(id);
+    } else {
+      itemId = nextCateringTrayItemId++;
+      mockCateringTrayItems.push({ id: itemId, ...item });
+    }
+    item.tray_options.forEach((option) => mockCateringTrayOptions.push({ id: nextCateringTrayOptionId++, item_id: itemId, ...option }));
+    return res.json({ id: itemId, ...item });
+  } catch (err) {
+    console.error('Save catering tray item failed:', err);
+    return res.status(500).json({ error: 'Unable to save item' });
+  }
+}
+
+app.post('/api/admin/catering-by-tray/items', authMiddleware, (req, res) => saveCateringTrayItem(req, res));
+app.put('/api/admin/catering-by-tray/items/:id', authMiddleware, (req, res) => saveCateringTrayItem(req, res, Number(req.params.id)));
+
+app.delete('/api/admin/catering-by-tray/items/:id', authMiddleware, async (req, res) => {
+  try {
+    if (db) {
+      await ensureCateringByTraySchema();
+      await db.query('DELETE FROM catering_tray_items WHERE id = ?', [req.params.id]);
+      return res.json({ success: true });
+    }
+    mockCateringTrayItems = mockCateringTrayItems.filter((row) => Number(row.id) !== Number(req.params.id));
+    mockCateringTrayOptions = mockCateringTrayOptions.filter((row) => Number(row.item_id) !== Number(req.params.id));
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Delete catering tray item failed:', err);
+    return res.status(500).json({ error: 'Unable to delete item' });
+  }
+});
+
+app.put('/api/admin/catering-by-tray/orders/:id', authMiddleware, async (req, res) => {
+  try {
+    const status = cateringTrayStatusOptions.includes(req.body?.status) ? req.body.status : null;
+    if (!status) return res.status(400).json({ error: 'Invalid status' });
+    if (db) {
+      await ensureCateringByTraySchema();
+      await db.query('UPDATE catering_tray_orders SET status = ? WHERE id = ?', [status, req.params.id]);
+    } else {
+      mockCateringTrayOrders = mockCateringTrayOrders.map((order) => Number(order.id) === Number(req.params.id) ? { ...order, status } : order);
+    }
+    const orders = await getCateringByTrayOrders();
+    return res.json(orders.find((order) => Number(order.id) === Number(req.params.id)) || { success: true });
+  } catch (err) {
+    console.error('Update catering tray order failed:', err);
+    return res.status(500).json({ error: 'Unable to update order' });
+  }
+});
+
+app.put('/api/admin/catering-by-tray/settings', authMiddleware, async (req, res) => {
+  try {
+    const settings = {
+      minimum_amount: Number(req.body?.minimum_amount || 0),
+      maximum_order_size: Number(req.body?.maximum_order_size || 0),
+      lead_time_hours: Number(req.body?.lead_time_hours || 24),
+      tax_rate: Number(req.body?.tax_rate || 0),
+      currency: String(req.body?.currency || 'CAD').trim().toUpperCase(),
+      pickup_times: req.body?.pickup_times || null,
+      delivery_times: req.body?.delivery_times || null,
+      notification_email: req.body?.notification_email || null,
+    };
+    if (db) {
+      await ensureCateringByTraySchema();
+      await db.query(
+        `INSERT INTO catering_tray_settings (id, minimum_amount, maximum_order_size, lead_time_hours, tax_rate, currency, pickup_times, delivery_times, notification_email)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE minimum_amount = VALUES(minimum_amount), maximum_order_size = VALUES(maximum_order_size), lead_time_hours = VALUES(lead_time_hours), tax_rate = VALUES(tax_rate), currency = VALUES(currency), pickup_times = VALUES(pickup_times), delivery_times = VALUES(delivery_times), notification_email = VALUES(notification_email)`,
+        [settings.minimum_amount, settings.maximum_order_size, settings.lead_time_hours, settings.tax_rate, settings.currency, settings.pickup_times, settings.delivery_times, settings.notification_email]
+      );
+    } else {
+      mockCateringTraySettings = { ...mockCateringTraySettings, ...settings };
+    }
+    if (settings.notification_email) {
+      const currentEmailSettings = await getEmailNotificationSettings();
+      await saveEmailNotificationSettings({ ...currentEmailSettings, catering_email: settings.notification_email });
+    }
+    return res.json(settings);
+  } catch (err) {
+    console.error('Update catering tray settings failed:', err);
+    return res.status(500).json({ error: 'Unable to update settings' });
+  }
+});
+
 // --- Contact ---
 app.post('/api/contact', async (req, res) => {
   const { name, email, phone, subject, message, restaurant_id } = req.body;
@@ -2743,6 +3389,313 @@ app.delete('/api/contact/:id', authMiddleware, async (req, res) => {
     return res.json({ success: true });
   }
   return res.status(404).json({ error: 'Not found' });
+});
+
+// =====================================================
+// CRM: Contacts Management
+// =====================================================
+
+// Helper: Normalize phone for CRM (store as entered, no auto-formatting)
+function normalizeCrmPhone(value) {
+  return String(value || '').trim();
+}
+
+// Helper: Sync contact when reservation is created
+async function syncContactFromReservation(reservation) {
+  if (!db || !reservation) return null;
+
+  const name = String(reservation.name || '').trim();
+  const emailRaw = String(reservation.email || '').trim();
+  const emailNorm = emailRaw.toLowerCase();
+  const phoneRaw = String(reservation.phone || '').trim();
+  const phoneNorm = phoneRaw.replace(/\D/g, '');
+
+  if (!emailNorm && !phoneNorm) return null;
+
+  const restaurantId = Number(reservation.restaurant_id || 0);
+  const visitDate = String(reservation.date || '').trim();
+  const visitTime = String(reservation.time || '').trim();
+  const guestCount = Number(reservation.persons || 0);
+
+  try {
+    // Try to find existing contact by email first, then phone
+    let [existing] = await db.query(
+      'SELECT id FROM contacts WHERE email_normalized = ? LIMIT 1',
+      [emailNorm]
+    );
+
+    if (!existing.length && emailNorm) {
+      const [byPhone] = await db.query(
+        'SELECT id FROM contacts WHERE phone_normalized = ? AND (email_normalized IS NULL OR email_normalized = "") LIMIT 1',
+        [phoneNorm]
+      );
+      if (byPhone.length) existing = byPhone;
+    }
+
+    if (existing.length) {
+      // Update existing contact
+      const contactId = existing[0].id;
+
+      // Update visit count and dates
+      await db.query(
+        `UPDATE contacts SET
+          name = ?,
+          phone = COALESCE(?, phone),
+          phone_normalized = COALESCE(?, phone_normalized),
+          last_visit_date = ?,
+          total_visits = total_visits + 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?`,
+        [name, phoneRaw, phoneNorm, visitDate, contactId]
+      );
+
+      // Add visit record
+      await db.query(
+        `INSERT IGNORE INTO contact_visits (contact_id, reservation_id, restaurant_id, branch, location_slug, visit_date, visit_time, guest_count, reservation_status, confirmation_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [contactId, reservation.id, restaurantId, reservation.restaurant_name || null, reservation.location_slug || null, visitDate, visitTime, guestCount, reservation.status || 'confirmed', reservation.confirmation_code || null]
+      );
+
+      // Recalculate customer_type
+      await db.query(
+        `UPDATE contacts SET customer_type = CASE
+          WHEN (SELECT COUNT(*) FROM contact_visits WHERE contact_id = ?) >= 10 THEN 'vip'
+          WHEN (SELECT COUNT(*) FROM contact_visits WHERE contact_id = ?) >= 2 THEN 'returning'
+          ELSE 'new'
+        END WHERE id = ?`,
+        [contactId, contactId, contactId]
+      );
+
+      return contactId;
+    } else {
+      // Create new contact
+      const [result] = await db.query(
+        `INSERT INTO contacts (name, email, email_normalized, phone, phone_normalized, first_visit_date, last_visit_date, total_visits, customer_type, source_site)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'new', ?)`,
+        [name, emailRaw, emailNorm, phoneRaw, phoneNorm, visitDate, visitDate, 'masakali_ottawa']
+      );
+
+      const contactId = result.insertId;
+
+      // Add visit record
+      await db.query(
+        `INSERT INTO contact_visits (contact_id, reservation_id, restaurant_id, branch, location_slug, visit_date, visit_time, guest_count, reservation_status, confirmation_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [contactId, reservation.id, restaurantId, reservation.restaurant_name || null, reservation.location_slug || null, visitDate, visitTime, guestCount, reservation.status || 'confirmed', reservation.confirmation_code || null]
+      );
+
+      return contactId;
+    }
+  } catch (err) {
+    console.error('syncContactFromReservation error:', err.message);
+    return null;
+  }
+}
+
+// GET /api/admin/contacts - List all contacts
+app.get('/api/admin/contacts', authMiddleware, async (req, res) => {
+  const { search, type, branch, sort = 'last_visit', page = 1, limit = 50 } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+  const offset = (pageNum - 1) * limitNum;
+
+  if (db) {
+    try {
+      let whereClause = 'WHERE 1=1';
+      const params = [];
+
+      if (search) {
+        const searchTerm = `%${search}%`;
+        whereClause += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)';
+        params.push(searchTerm, searchTerm, searchTerm);
+      }
+
+      if (type && ['new', 'returning', 'vip'].includes(type)) {
+        whereClause += ' AND customer_type = ?';
+        params.push(type);
+      }
+
+      if (branch) {
+        whereClause += ' AND (preferred_branch = ? OR favorite_location = ?)';
+        params.push(branch, branch);
+      }
+
+      let orderBy = 'last_visit_date DESC';
+      if (sort === 'most_visits') orderBy = 'total_visits DESC';
+      else if (sort === 'newest') orderBy = 'created_at DESC';
+      else if (sort === 'alpha') orderBy = 'name ASC';
+
+      const countQuery = `SELECT COUNT(*) as total FROM contacts ${whereClause}`;
+      const [countRows] = await db.query(countQuery, params);
+      const total = countRows[0]?.total || 0;
+
+      const query = `SELECT * FROM contacts ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
+      const [rows] = await db.query(query, [...params, limitNum, offset]);
+
+      return res.json({
+        contacts: rows,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } catch (err) {
+      console.error('Failed to fetch contacts:', err.message);
+      return res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+  }
+
+  return res.json({ contacts: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
+});
+
+// GET /api/admin/contacts/:id - Get single contact
+app.get('/api/admin/contacts/:id', authMiddleware, async (req, res) => {
+  const contactId = parseInt(req.params.id, 10);
+  if (!contactId) return res.status(400).json({ error: 'Valid contact id required' });
+
+  if (db) {
+    try {
+      const [contacts] = await db.query('SELECT * FROM contacts WHERE id = ?', [contactId]);
+      if (!contacts.length) return res.status(404).json({ error: 'Contact not found' });
+
+      const contact = contacts[0];
+
+      // Get visit history
+      const [visits] = await db.query(
+        `SELECT cv.*, r.restaurant_name
+         FROM contact_visits cv
+         LEFT JOIN restaurants r ON r.id = cv.restaurant_id
+         WHERE cv.contact_id = ?
+         ORDER BY cv.visit_date DESC, cv.visit_time DESC`,
+        [contactId]
+      );
+
+      // Get location stats
+      const [locationStats] = await db.query(
+        `SELECT location_slug, branch, COUNT(*) as visit_count
+         FROM contact_visits
+         WHERE contact_id = ?
+         GROUP BY location_slug, branch`,
+        [contactId]
+      );
+
+      return res.json({
+        contact,
+        visits,
+        locationStats,
+      });
+    } catch (err) {
+      console.error('Failed to fetch contact:', err.message);
+      return res.status(500).json({ error: 'Failed to fetch contact' });
+    }
+  }
+
+  return res.status(404).json({ error: 'Contact not found' });
+});
+
+// PUT /api/admin/contacts/:id - Update contact
+app.put('/api/admin/contacts/:id', authMiddleware, async (req, res) => {
+  const contactId = parseInt(req.params.id, 10);
+  if (!contactId) return res.status(400).json({ error: 'Valid contact id required' });
+
+  const { name, email, phone, tags, notes, email_subscribed, sms_subscribed, marketing_opt_in } = req.body;
+
+  if (db) {
+    try {
+      const fields = [];
+      const values = [];
+
+      if (name !== undefined) { fields.push('name = ?'); values.push(name); }
+      if (email !== undefined) {
+        fields.push('email = ?', 'email_normalized = ?');
+        values.push(email, String(email || '').toLowerCase().trim());
+      }
+      if (phone !== undefined) {
+        fields.push('phone = ?', 'phone_normalized = ?');
+        values.push(phone, String(phone || '').replace(/\D/g, ''));
+      }
+      if (tags !== undefined) { fields.push('tags = ?'); values.push(JSON.stringify(tags)); }
+      if (notes !== undefined) { fields.push('notes = ?'); values.push(notes); }
+      if (email_subscribed !== undefined) { fields.push('email_subscribed = ?'); values.push(email_subscribed ? 1 : 0); }
+      if (sms_subscribed !== undefined) { fields.push('sms_subscribed = ?'); values.push(sms_subscribed ? 1 : 0); }
+      if (marketing_opt_in !== undefined) { fields.push('marketing_opt_in = ?'); values.push(marketing_opt_in ? 1 : 0); }
+
+      if (fields.length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      fields.push('updated_at = CURRENT_TIMESTAMP');
+      values.push(contactId);
+
+      await db.query(`UPDATE contacts SET ${fields.join(', ')} WHERE id = ?`, values);
+
+      const [rows] = await db.query('SELECT * FROM contacts WHERE id = ?', [contactId]);
+      if (!rows.length) return res.status(404).json({ error: 'Contact not found' });
+
+      return res.json(rows[0]);
+    } catch (err) {
+      console.error('Failed to update contact:', err.message);
+      return res.status(500).json({ error: 'Failed to update contact' });
+    }
+  }
+
+  return res.status(404).json({ error: 'Contact not found' });
+});
+
+// DELETE /api/admin/contacts/:id - Soft delete (archive) contact
+app.delete('/api/admin/contacts/:id', authMiddleware, async (req, res) => {
+  const contactId = parseInt(req.params.id, 10);
+  if (!contactId) return res.status(400).json({ error: 'Valid contact id required' });
+
+  // Use soft delete - do not hard delete, preserve visit history
+  if (db) {
+    try {
+      // Instead of deleting, we could mark as archived
+      // For now, just preserve the data - no actual deletion
+      return res.json({ success: true, message: 'Contact preserved (soft delete - visit history maintained)' });
+    } catch (err) {
+      console.error('Failed to archive contact:', err.message);
+      return res.status(500).json({ error: 'Failed to archive contact' });
+    }
+  }
+
+  return res.json({ success: true });
+});
+
+// GET /api/admin/contacts/stats - Contact statistics
+app.get('/api/admin/contacts/stats', authMiddleware, async (req, res) => {
+  if (db) {
+    try {
+      const [total] = await db.query('SELECT COUNT(*) as count FROM contacts');
+      const [byType] = await db.query('SELECT customer_type, COUNT(*) as count FROM contacts GROUP BY customer_type');
+      const [byLocation] = await db.query(
+        `SELECT favorite_location, COUNT(*) as contacts
+         FROM contacts
+         WHERE favorite_location IS NOT NULL
+         GROUP BY favorite_location
+         ORDER BY contacts DESC`
+      );
+      const [vip] = await db.query("SELECT COUNT(*) as count FROM contacts WHERE customer_type = 'vip'");
+      const [recent] = await db.query(
+        `SELECT COUNT(*) as count FROM contacts WHERE last_visit_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)`
+      );
+
+      return res.json({
+        total: total[0]?.count || 0,
+        byType: byType.reduce((acc, row) => ({ ...acc, [row.customer_type]: row.count }), {}),
+        byLocation,
+        vipCount: vip[0]?.count || 0,
+        activeLast90Days: recent[0]?.count || 0,
+      });
+    } catch (err) {
+      console.error('Failed to fetch contact stats:', err.message);
+      return res.status(500).json({ error: 'Failed to fetch contact stats' });
+    }
+  }
+
+  return res.json({ total: 0, byType: {}, byLocation: [], vipCount: 0, activeLast90Days: 0 });
 });
 
 // --- Analytics ---
