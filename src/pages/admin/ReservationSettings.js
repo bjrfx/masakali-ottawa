@@ -6,9 +6,11 @@ import api from '../../api';
 export default function ReservationSettings() {
   const [paused, setPaused] = useState(false);
   const [timeRestrictionEnabled, setTimeRestrictionEnabled] = useState(true);
+  const [reservationTimeWarningEnabled, setReservationTimeWarningEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [togglingTimeRestriction, setTogglingTimeRestriction] = useState(false);
+  const [togglingTimeWarning, setTogglingTimeWarning] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
@@ -21,6 +23,7 @@ export default function ReservationSettings() {
       const data = await api.getReservationSettings();
       setPaused(Boolean(data.reservations_paused));
       setTimeRestrictionEnabled(data?.time_restriction_enabled !== false && data?.time_restriction_enabled !== 0);
+      setReservationTimeWarningEnabled(data?.reservation_time_warning_enabled === true || data?.reservation_time_warning_enabled === 1);
     } catch (err) {
       console.error('Failed to load pause status:', err);
       setMessage({ type: 'error', text: 'Failed to load reservation settings.' });
@@ -55,9 +58,10 @@ export default function ReservationSettings() {
     setTogglingTimeRestriction(true);
     setMessage(null);
     try {
-      const result = await api.toggleReservationTimeRestriction(newState, paused);
+      const result = await api.toggleReservationTimeRestriction(newState, paused, reservationTimeWarningEnabled);
       setPaused(Boolean(result.reservations_paused));
       setTimeRestrictionEnabled(result?.time_restriction_enabled !== false && result?.time_restriction_enabled !== 0);
+      setReservationTimeWarningEnabled(result?.reservation_time_warning_enabled === true || result?.reservation_time_warning_enabled === 1);
       setMessage({
         type: 'success',
         text: newState
@@ -69,6 +73,29 @@ export default function ReservationSettings() {
       setMessage({ type: 'error', text: 'Failed to update reservation time restriction. Please try again.' });
     } finally {
       setTogglingTimeRestriction(false);
+    }
+  };
+
+  const handleToggleTimeWarning = async () => {
+    const newState = !reservationTimeWarningEnabled;
+    setTogglingTimeWarning(true);
+    setMessage(null);
+    try {
+      const result = await api.toggleReservationTimeWarning(newState, paused, timeRestrictionEnabled);
+      setPaused(Boolean(result.reservations_paused));
+      setTimeRestrictionEnabled(result?.time_restriction_enabled !== false && result?.time_restriction_enabled !== 0);
+      setReservationTimeWarningEnabled(result?.reservation_time_warning_enabled === true || result?.reservation_time_warning_enabled === 1);
+      setMessage({
+        type: 'success',
+        text: newState
+          ? 'Reservation time warning has been enabled and time restriction has been disabled.'
+          : 'Reservation time warning has been disabled.',
+      });
+    } catch (err) {
+      console.error('Failed to toggle time warning:', err);
+      setMessage({ type: 'error', text: 'Failed to update reservation time warning. Please try again.' });
+    } finally {
+      setTogglingTimeWarning(false);
     }
   };
 
@@ -226,6 +253,60 @@ export default function ReservationSettings() {
               'Disable Restriction'
             ) : (
               'Enable Restriction'
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Reservation Time Warning Card */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 shadow-sm dark:shadow-none">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
+              reservationTimeWarningEnabled
+                ? 'bg-amber-500/10 border border-amber-500/20'
+                : 'bg-neutral-500/10 border border-neutral-500/20'
+            }`}>
+              <AlertTriangle size={28} className={reservationTimeWarningEnabled ? 'text-amber-500 dark:text-amber-400' : 'text-neutral-500 dark:text-neutral-400'} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+                Reservation Time Warning
+              </h2>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1 max-w-lg">
+                When enabled, same-day times less than 1 hour from the restaurant-local time remain selectable, but customers see a warning with contact details and cannot submit until they choose a valid time.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${
+                  reservationTimeWarningEnabled
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                    : 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border border-neutral-500/20'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${reservationTimeWarningEnabled ? 'bg-amber-500' : 'bg-neutral-400'}`} />
+                  {reservationTimeWarningEnabled ? 'Warning Enabled' : 'Warning Disabled'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleToggleTimeWarning}
+            disabled={togglingTimeWarning}
+            className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+              reservationTimeWarningEnabled
+                ? 'bg-neutral-600 hover:bg-neutral-700 text-white'
+                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20'
+            }`}
+          >
+            {togglingTimeWarning ? (
+              <span className="flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                Updating...
+              </span>
+            ) : reservationTimeWarningEnabled ? (
+              'Disable Warning'
+            ) : (
+              'Enable Warning'
             )}
           </button>
         </div>

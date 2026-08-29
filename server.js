@@ -30,6 +30,46 @@ const io = new SocketIOServer(httpServer, { cors: { origin: true, credentials: t
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'masakali_secret_2024';
 const IP_API_BASE_URL = 'http://ip-api.com/json';
+const RESTAURANT_TIME_ZONE = 'America/Toronto';
+const SAME_DAY_RESERVATION_BUFFER_MINUTES = 60;
+
+function getRestaurantNow(timeZone = RESTAURANT_TIME_ZONE) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date()).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+}
+
+function getSlotMinutes(slot) {
+  const [hours, minutes] = String(slot || '').split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function isReservationWithinAdvanceWindow(date, time) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) return false;
+  const slotMinutes = getSlotMinutes(time);
+  if (slotMinutes === null) return false;
+  const restaurantNow = getRestaurantNow();
+  return date === restaurantNow.date && slotMinutes < restaurantNow.minutes + SAME_DAY_RESERVATION_BUFFER_MINUTES;
+}
+
+function parseBooleanSetting(value) {
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
 
 // =====================================================
 // Middleware
@@ -149,16 +189,18 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS reservation_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         reservations_paused BOOLEAN NOT NULL DEFAULT FALSE,
-        time_restriction_enabled BOOLEAN NOT NULL DEFAULT TRUE
+        time_restriction_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        reservation_time_warning_enabled BOOLEAN NOT NULL DEFAULT FALSE
       )
     `);
     await db.query(
-      `INSERT INTO reservation_settings (id, reservations_paused, time_restriction_enabled)
-       VALUES (1, FALSE, TRUE)
+      `INSERT INTO reservation_settings (id, reservations_paused, time_restriction_enabled, reservation_time_warning_enabled)
+       VALUES (1, FALSE, TRUE, FALSE)
        ON DUPLICATE KEY UPDATE id = id`
     );
     try {
       await db.query('ALTER TABLE email_notification_settings ADD COLUMN IF NOT EXISTS hiring_email VARCHAR(255) DEFAULT NULL');
+      await db.query('ALTER TABLE reservation_settings ADD COLUMN IF NOT EXISTS reservation_time_warning_enabled BOOLEAN NOT NULL DEFAULT FALSE');
       await db.query('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS geolocation_latitude DECIMAL(10, 8) NULL');
       await db.query('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS geolocation_longitude DECIMAL(11, 8) NULL');
       await db.query('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS geolocation_accuracy_meters DECIMAL(10, 2) NULL');
@@ -822,6 +864,7 @@ let nextBlockoutId = 1;
 
 let mockReservationsPaused = false;
 let mockTimeRestrictionEnabled = true;
+let mockReservationTimeWarningEnabled = false;
 
 let nextReservationId = 9;
 let nextCateringId = 3;
@@ -1620,7 +1663,8 @@ app.get('/api/reservation-settings/pause-status', async (req, res) => {
       const [rows] = await db.query('SELECT * FROM reservation_settings WHERE id = 1 LIMIT 1');
       const paused = rows.length > 0 ? Boolean(rows[0].reservations_paused) : false;
       const timeRestrictionEnabled = rows.length > 0 ? rows[0].time_restriction_enabled !== 0 : true;
-      return res.json({ reservations_paused: paused, time_restriction_enabled: timeRestrictionEnabled });
+      const timeWarningEnabled = rows.length > 0 ? rows[0].reservation_time_warning_enabled === 1 || rows[0].reservation_time_warning_enabled === true : false;
+      return res.json({ reservations_paused: paused, time_restriction_enabled: timeRestrictionEnabled, reservation_time_warning_enabled: timeWarningEnabled });
     } catch (err) {
       console.error('Error fetching reservation pause status:', err);
     }
@@ -1628,23 +1672,26 @@ app.get('/api/reservation-settings/pause-status', async (req, res) => {
   return res.json({
     reservations_paused: mockReservationsPaused,
     time_restriction_enabled: mockTimeRestrictionEnabled,
+    reservation_time_warning_enabled: mockReservationTimeWarningEnabled,
   });
 });
 
 app.put('/api/admin/reservation-settings/pause', authMiddleware, async (req, res) => {
-  const { reservations_paused, time_restriction_enabled } = req.body || {};
+  const { reservations_paused, time_restriction_enabled, reservation_time_warning_enabled } = req.body || {};
   const hasTimeRestriction = Object.prototype.hasOwnProperty.call(req.body || {}, 'time_restriction_enabled');
+  const hasTimeWarning = Object.prototype.hasOwnProperty.call(req.body || {}, 'reservation_time_warning_enabled');
   const paused = Boolean(reservations_paused);
-  const timeRestrictionEnabled = time_restriction_enabled === undefined
-    ? mockTimeRestrictionEnabled
-    : time_restriction_enabled === true || time_restriction_enabled === 'true' || time_restriction_enabled === 1;
+  let timeRestrictionEnabled = hasTimeRestriction ? parseBooleanSetting(time_restriction_enabled) : mockTimeRestrictionEnabled;
+  let timeWarningEnabled = hasTimeWarning ? parseBooleanSetting(reservation_time_warning_enabled) : mockReservationTimeWarningEnabled;
+  if (hasTimeRestriction && timeRestrictionEnabled) timeWarningEnabled = false;
+  if (hasTimeWarning && timeWarningEnabled) timeRestrictionEnabled = false;
 
   if (db) {
     try {
-      if (hasTimeRestriction) {
+      if (hasTimeRestriction || hasTimeWarning) {
         await db.query(
-          'UPDATE reservation_settings SET reservations_paused = ?, time_restriction_enabled = ? WHERE id = 1',
-          [paused, timeRestrictionEnabled]
+          'UPDATE reservation_settings SET reservations_paused = ?, time_restriction_enabled = ?, reservation_time_warning_enabled = ? WHERE id = 1',
+          [paused, timeRestrictionEnabled, timeWarningEnabled]
         );
       } else {
         await db.query('UPDATE reservation_settings SET reservations_paused = ? WHERE id = 1', [paused]);
@@ -1653,6 +1700,7 @@ app.put('/api/admin/reservation-settings/pause', authMiddleware, async (req, res
       return res.json({
         reservations_paused: Boolean(rows[0]?.reservations_paused),
         time_restriction_enabled: rows[0]?.time_restriction_enabled !== 0,
+        reservation_time_warning_enabled: rows[0]?.reservation_time_warning_enabled === 1 || rows[0]?.reservation_time_warning_enabled === true,
       });
     } catch (err) {
       console.error('Error updating reservation pause status:', err);
@@ -1662,7 +1710,8 @@ app.put('/api/admin/reservation-settings/pause', authMiddleware, async (req, res
 
   mockReservationsPaused = paused;
   mockTimeRestrictionEnabled = timeRestrictionEnabled;
-  return res.json({ reservations_paused: paused, time_restriction_enabled: timeRestrictionEnabled });
+  mockReservationTimeWarningEnabled = timeWarningEnabled;
+  return res.json({ reservations_paused: paused, time_restriction_enabled: timeRestrictionEnabled, reservation_time_warning_enabled: timeWarningEnabled });
 });
 
 app.get('/api/reservation-availability', async (req, res) => {
@@ -2065,14 +2114,23 @@ app.post('/api/reservations', async (req, res) => {
   // Check if reservations are paused
   try {
     let isPaused = false;
+    let timeRestrictionEnabled = true;
+    let timeWarningEnabled = false;
     if (db) {
-      const [rows] = await db.query('SELECT reservations_paused FROM reservation_settings WHERE id = 1 LIMIT 1');
+      const [rows] = await db.query('SELECT reservations_paused, time_restriction_enabled, reservation_time_warning_enabled FROM reservation_settings WHERE id = 1 LIMIT 1');
       isPaused = rows.length > 0 ? Boolean(rows[0].reservations_paused) : false;
+      timeRestrictionEnabled = rows.length > 0 ? rows[0].time_restriction_enabled !== 0 : true;
+      timeWarningEnabled = rows.length > 0 ? rows[0].reservation_time_warning_enabled === 1 || rows[0].reservation_time_warning_enabled === true : false;
     } else {
       isPaused = mockReservationsPaused;
+      timeRestrictionEnabled = mockTimeRestrictionEnabled;
+      timeWarningEnabled = mockReservationTimeWarningEnabled;
     }
     if (isPaused) {
       return res.status(403).json({ error: 'Reservations are currently paused for the day. Please try again later or contact us directly.' });
+    }
+    if (timeWarningEnabled && !timeRestrictionEnabled && isReservationWithinAdvanceWindow(req.body?.date, req.body?.time)) {
+      return res.status(400).json({ error: 'Your selected reservation time is less than 1 hour from now. Please select another time, or contact the restaurant directly to make a reservation.' });
     }
   } catch (pauseErr) {
     console.error('Error checking reservation pause status:', pauseErr);
