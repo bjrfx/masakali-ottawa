@@ -5,8 +5,10 @@ import api from '../../api';
 
 export default function ReservationSettings() {
   const [paused, setPaused] = useState(false);
+  const [timeRestrictionEnabled, setTimeRestrictionEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [togglingTimeRestriction, setTogglingTimeRestriction] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
@@ -18,6 +20,7 @@ export default function ReservationSettings() {
     try {
       const data = await api.getReservationSettings();
       setPaused(Boolean(data.reservations_paused));
+      setTimeRestrictionEnabled(data?.time_restriction_enabled !== false && data?.time_restriction_enabled !== 0);
     } catch (err) {
       console.error('Failed to load pause status:', err);
       setMessage({ type: 'error', text: 'Failed to load reservation settings.' });
@@ -44,6 +47,28 @@ export default function ReservationSettings() {
       setMessage({ type: 'error', text: 'Failed to update reservation status. Please try again.' });
     } finally {
       setToggling(false);
+    }
+  };
+
+  const handleToggleTimeRestriction = async () => {
+    const newState = !timeRestrictionEnabled;
+    setTogglingTimeRestriction(true);
+    setMessage(null);
+    try {
+      const result = await api.toggleReservationTimeRestriction(newState, paused);
+      setPaused(Boolean(result.reservations_paused));
+      setTimeRestrictionEnabled(result?.time_restriction_enabled !== false && result?.time_restriction_enabled !== 0);
+      setMessage({
+        type: 'success',
+        text: newState
+          ? 'Reservation time restriction has been enabled.'
+          : 'Reservation time restriction has been disabled.',
+      });
+    } catch (err) {
+      console.error('Failed to toggle time restriction:', err);
+      setMessage({ type: 'error', text: 'Failed to update reservation time restriction. Please try again.' });
+    } finally {
+      setTogglingTimeRestriction(false);
     }
   };
 
@@ -142,6 +167,65 @@ export default function ReservationSettings() {
                 <PauseCircle size={16} />
                 Pause Reservations
               </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Reservation Time Restriction Card */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 shadow-sm dark:shadow-none">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
+              timeRestrictionEnabled
+                ? 'bg-green-500/10 border border-green-500/20'
+                : 'bg-neutral-500/10 border border-neutral-500/20'
+            }`}>
+              {timeRestrictionEnabled ? (
+                <CheckCircle2 size={28} className="text-green-500 dark:text-green-400" />
+              ) : (
+                <AlertTriangle size={28} className="text-neutral-500 dark:text-neutral-400" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+                Reservation Time Restriction
+              </h2>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1 max-w-lg">
+                When enabled, reservations for today will only be available after the required minimum advance-booking time.
+                Past and restricted time slots will be automatically disabled. Reservations for future dates will remain unaffected.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${
+                  timeRestrictionEnabled
+                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                    : 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border border-neutral-500/20'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${timeRestrictionEnabled ? 'bg-green-500' : 'bg-neutral-400'}`} />
+                  {timeRestrictionEnabled ? 'Restriction Enabled' : 'Restriction Disabled'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleToggleTimeRestriction}
+            disabled={togglingTimeRestriction}
+            className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+              timeRestrictionEnabled
+                ? 'bg-neutral-600 hover:bg-neutral-700 text-white'
+                : 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20'
+            }`}
+          >
+            {togglingTimeRestriction ? (
+              <span className="flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                Updating...
+              </span>
+            ) : timeRestrictionEnabled ? (
+              'Disable Restriction'
+            ) : (
+              'Enable Restriction'
             )}
           </button>
         </div>

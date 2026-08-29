@@ -148,12 +148,13 @@ async function initDB() {
     await db.query(`
       CREATE TABLE IF NOT EXISTS reservation_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        reservations_paused BOOLEAN NOT NULL DEFAULT FALSE
+        reservations_paused BOOLEAN NOT NULL DEFAULT FALSE,
+        time_restriction_enabled BOOLEAN NOT NULL DEFAULT TRUE
       )
     `);
     await db.query(
-      `INSERT INTO reservation_settings (id, reservations_paused)
-       VALUES (1, FALSE)
+      `INSERT INTO reservation_settings (id, reservations_paused, time_restriction_enabled)
+       VALUES (1, FALSE, TRUE)
        ON DUPLICATE KEY UPDATE id = id`
     );
     try {
@@ -820,6 +821,7 @@ let nextAdminNotificationId = 1;
 let nextBlockoutId = 1;
 
 let mockReservationsPaused = false;
+let mockTimeRestrictionEnabled = true;
 
 let nextReservationId = 9;
 let nextCateringId = 3;
@@ -976,6 +978,7 @@ const emailSystem = createEmailTemplateSystem({
   "defaultRestaurantName": "Masakali Ottawa",
   "smtpHost": process.env.EMAIL_SMTP_HOST || process.env.EMAIL_HOST || "",
   "reservationUser": process.env.RESERVATION_EMAIL_USER || "",
+  "reservationAdminEmail": process.env.RESERVATION_ADMIN_EMAIL || process.env.RESERVATION_EMAIL_USER || "",
   "reservationPass": process.env.RESERVATION_EMAIL_PASS || "",
   "contactUser": process.env.CONTACT_EMAIL_USER || "",
   "contactPass": process.env.CONTACT_EMAIL_PASS || "",
@@ -1016,6 +1019,7 @@ const {
   getEmailNotificationSettings,
   saveEmailNotificationSettings,
   createAdminNotification,
+  emitAdminEvent,
   deriveServicePeriodFromTime,
   dateRangeInclusive,
   isReservationBlocked,
@@ -1613,24 +1617,43 @@ app.put('/api/admin/notification-emails', authMiddleware, async (req, res) => {
 app.get('/api/reservation-settings/pause-status', async (req, res) => {
   if (db) {
     try {
-      const [rows] = await db.query('SELECT reservations_paused FROM reservation_settings WHERE id = 1 LIMIT 1');
+      const [rows] = await db.query('SELECT * FROM reservation_settings WHERE id = 1 LIMIT 1');
       const paused = rows.length > 0 ? Boolean(rows[0].reservations_paused) : false;
-      return res.json({ reservations_paused: paused });
+      const timeRestrictionEnabled = rows.length > 0 ? rows[0].time_restriction_enabled !== 0 : true;
+      return res.json({ reservations_paused: paused, time_restriction_enabled: timeRestrictionEnabled });
     } catch (err) {
       console.error('Error fetching reservation pause status:', err);
     }
   }
-  return res.json({ reservations_paused: mockReservationsPaused });
+  return res.json({
+    reservations_paused: mockReservationsPaused,
+    time_restriction_enabled: mockTimeRestrictionEnabled,
+  });
 });
 
 app.put('/api/admin/reservation-settings/pause', authMiddleware, async (req, res) => {
-  const { reservations_paused } = req.body;
+  const { reservations_paused, time_restriction_enabled } = req.body || {};
+  const hasTimeRestriction = Object.prototype.hasOwnProperty.call(req.body || {}, 'time_restriction_enabled');
   const paused = Boolean(reservations_paused);
+  const timeRestrictionEnabled = time_restriction_enabled === undefined
+    ? mockTimeRestrictionEnabled
+    : time_restriction_enabled === true || time_restriction_enabled === 'true' || time_restriction_enabled === 1;
 
   if (db) {
     try {
-      await db.query('UPDATE reservation_settings SET reservations_paused = ? WHERE id = 1', [paused]);
-      return res.json({ reservations_paused: paused });
+      if (hasTimeRestriction) {
+        await db.query(
+          'UPDATE reservation_settings SET reservations_paused = ?, time_restriction_enabled = ? WHERE id = 1',
+          [paused, timeRestrictionEnabled]
+        );
+      } else {
+        await db.query('UPDATE reservation_settings SET reservations_paused = ? WHERE id = 1', [paused]);
+      }
+      const [rows] = await db.query('SELECT * FROM reservation_settings WHERE id = 1 LIMIT 1');
+      return res.json({
+        reservations_paused: Boolean(rows[0]?.reservations_paused),
+        time_restriction_enabled: rows[0]?.time_restriction_enabled !== 0,
+      });
     } catch (err) {
       console.error('Error updating reservation pause status:', err);
       return res.status(500).json({ error: 'Failed to update reservation pause status' });
@@ -1638,7 +1661,8 @@ app.put('/api/admin/reservation-settings/pause', authMiddleware, async (req, res
   }
 
   mockReservationsPaused = paused;
-  return res.json({ reservations_paused: paused });
+  mockTimeRestrictionEnabled = timeRestrictionEnabled;
+  return res.json({ reservations_paused: paused, time_restriction_enabled: timeRestrictionEnabled });
 });
 
 app.get('/api/reservation-availability', async (req, res) => {
@@ -3487,6 +3511,7 @@ async function syncContactFromReservation(reservation) {
       return contactId;
     }
   } catch (err) {
+    if (isTableMissingError(err)) return null;
     console.error('syncContactFromReservation error:', err.message);
     return null;
   }

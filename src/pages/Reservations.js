@@ -19,11 +19,46 @@ const timeSlots = [
   '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
 ];
 
+const RESTAURANT_TIME_ZONE = 'America/Toronto';
+const SAME_DAY_RESERVATION_BUFFER_MINUTES = 60;
+
 function formatDateOnly(value) {
   if (!value) return '';
   const text = String(value);
   const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1] : text;
+}
+
+function getRestaurantNow(timeZone = RESTAURANT_TIME_ZONE) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date()).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+}
+
+function getSlotMinutes(slot) {
+  const [hours, minutes] = slot.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function isTimeSlotDisabled(slot, selectedDate) {
+  if (!selectedDate) return false;
+  const restaurantNow = getRestaurantNow();
+  return selectedDate === restaurantNow.date
+    && getSlotMinutes(slot) < restaurantNow.minutes + SAME_DAY_RESERVATION_BUFFER_MINUTES;
 }
 
 export default function Reservations() {
@@ -37,6 +72,7 @@ export default function Reservations() {
   const [error, setError] = useState('');
   const [dateClosed, setDateClosed] = useState(false);
   const [reservationsPaused, setReservationsPaused] = useState(false);
+  const [timeRestrictionEnabled, setTimeRestrictionEnabled] = useState(true);
 
   const getBranchOptionLabel = (restaurant) => {
     const slug = String(restaurant?.slug || '').toLowerCase();
@@ -67,7 +103,10 @@ export default function Reservations() {
       .catch(console.error);
 
     api.getReservationSettings()
-      .then((data) => setReservationsPaused(Boolean(data.reservations_paused)))
+      .then((data) => {
+        setReservationsPaused(Boolean(data.reservations_paused));
+        setTimeRestrictionEnabled(data?.time_restriction_enabled !== false && data?.time_restriction_enabled !== 0);
+      })
       .catch(console.error);
   }, []);
 
@@ -117,6 +156,7 @@ export default function Reservations() {
 
 const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     if (!form.name || !form.email || !form.phone || !form.date || !form.time || !form.restaurant_id) {
       setError('Please fill in all required fields.');
       return;
@@ -128,6 +168,10 @@ const handleSubmit = async (e) => {
     }
     if (dateClosed) {
       setError('Reservations are closed for the selected day/service period.');
+      return;
+    }
+    if (timeRestrictionEnabled && isTimeSlotDisabled(form.time, form.date)) {
+      setError('Please choose a reservation time at least 1 hour from now.');
       return;
     }
 
@@ -155,7 +199,13 @@ const handleSubmit = async (e) => {
     setConfirmation(null);
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  useEffect(() => {
+    if (timeRestrictionEnabled && form.time && isTimeSlotDisabled(form.time, form.date)) {
+      setForm((prev) => ({ ...prev, time: '' }));
+    }
+  }, [form.date, form.time, timeRestrictionEnabled]);
+
+  const today = getRestaurantNow().date;
 
   return (
     <div className="min-h-screen pt-20 relative">
@@ -324,7 +374,7 @@ const handleSubmit = async (e) => {
                       <select name="time" value={form.time} onChange={handleChange} className="select-dark" required>
                         <option value="">Select time</option>
                         {timeSlots.map(t => (
-                          <option key={t} value={t}>{t}</option>
+                          <option key={t} value={t} disabled={timeRestrictionEnabled && isTimeSlotDisabled(t, form.date)}>{t}</option>
                         ))}
                       </select>
                     </div>

@@ -126,6 +126,22 @@ toggleReservationPause: (paused) =>
 
   }),
 
+toggleReservationTimeRestriction: (enabled, paused = false) =>
+
+  apiCall('/admin/reservation-settings/pause', {
+
+    method: 'PUT',
+
+    body: JSON.stringify({
+
+      reservations_paused: paused,
+
+      time_restriction_enabled: enabled,
+
+    }),
+
+  }),
+
   // Smart Reservation Calendar
   getCapacitySettings: () => apiCall('/admin/capacity-settings'),
   updateCapacitySettings: (settings) => apiCall('/admin/capacity-settings', { method: 'PUT', body: JSON.stringify({ settings }) }),
