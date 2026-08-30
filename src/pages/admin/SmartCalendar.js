@@ -3,15 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
 import { CalendarDays, ChevronLeft, ChevronRight, Lock, Unlock, Save, Info } from 'lucide-react';
 import api from '../../api';
-
-const SITE_KEY = 'ottawa';
-const SITE_LOCATION_SLUGS = {
-  california: ['california'],
-  montreal: ['montreal'],
-  rangde: ['rangde'],
-  restobar: ['restobar'],
-  ottawa: ['stittsville', 'wellington'],
-};
+import { filterSiteLocations } from '../../config/siteLocations';
 
 function toDateInput(d) {
   const y = d.getFullYear();
@@ -108,10 +100,7 @@ export default function SmartCalendar() {
       ]);
 
       const map = new Map();
-      const filteredRestaurants = (restaurantsRes || []).filter((r) => {
-        const allowed = SITE_LOCATION_SLUGS[SITE_KEY] || [];
-        return allowed.includes(String(r.slug || '').toLowerCase());
-      });
+      const filteredRestaurants = filterSiteLocations(restaurantsRes);
       const allowedRestaurantIds = new Set(filteredRestaurants.map((r) => Number(r.id)));
 
       const filteredReservations = (reservationsRes || []).filter((r) => allowedRestaurantIds.has(Number(r.restaurant_id || 0)));
