@@ -26,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import api from '../api';
-import * as siteLocationConfig from '../config/siteLocations';
+import { SITE_KEY, SITE_LOCATION_SLUGS, filterSiteLocations } from '../config/siteLocations';
 
 const BADGES = {
   vegetarian: { label: 'Vegetarian', icon: Leaf, className: 'text-emerald-600 bg-emerald-500/10' },
@@ -65,20 +65,9 @@ function getLocationSlug(location = {}) {
 }
 
 function getCurrentSiteLocations(locations = []) {
-  if (typeof siteLocationConfig.filterSiteLocations === 'function') {
-    return siteLocationConfig.filterSiteLocations(locations);
-  }
-  if (typeof siteLocationConfig.filterLocationsForCurrentSite === 'function') {
-    return siteLocationConfig.filterLocationsForCurrentSite(locations);
-  }
-  if (typeof siteLocationConfig.filterCurrentSiteLocations === 'function') {
-    return siteLocationConfig.filterCurrentSiteLocations(locations);
-  }
-  if (typeof siteLocationConfig.isCurrentSiteLocation === 'function') {
-    return locations.filter((location) => siteLocationConfig.isCurrentSiteLocation(location));
-  }
-  const currentSiteKey = String(siteLocationConfig.SITE_KEY || '').trim().toLowerCase();
-  const siteSlugs = siteLocationConfig.SITE_LOCATION_SLUGS?.[currentSiteKey] || [];
+  if (typeof filterSiteLocations === 'function') return filterSiteLocations(locations);
+  const currentSiteKey = String(SITE_KEY || '').trim().toLowerCase();
+  const siteSlugs = SITE_LOCATION_SLUGS?.[currentSiteKey] || [];
   if (!siteSlugs.length) return locations;
   return locations.filter((location) => siteSlugs.includes(getLocationSlug(location)));
 }
