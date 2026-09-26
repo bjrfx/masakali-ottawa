@@ -179,6 +179,45 @@ CREATE TABLE IF NOT EXISTS testimonials (
 );
 
 -- =====================================================
+-- Migration: Catering By Tray hierarchical pricing formula
+-- =====================================================
+ALTER TABLE IF EXISTS catering_tray_categories
+  ADD COLUMN IF NOT EXISTS default_formula_multiplier DECIMAL(10, 4) NULL;
+
+ALTER TABLE IF EXISTS catering_tray_items
+  ADD COLUMN IF NOT EXISTS base_price DECIMAL(10, 2) NULL,
+  ADD COLUMN IF NOT EXISTS item_formula_multiplier DECIMAL(10, 4) NULL;
+
+-- =====================================================
+-- Migration: Catering By Tray multiple formulas per category
+-- =====================================================
+CREATE TABLE IF NOT EXISTS catering_tray_category_formulas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  category_id INT NOT NULL,
+  label VARCHAR(120) NOT NULL,
+  multiplier DECIMAL(10, 4) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_catering_tray_category_formulas_category (category_id),
+  CONSTRAINT fk_catering_tray_category_formula_category
+    FOREIGN KEY (category_id) REFERENCES catering_tray_categories(id) ON DELETE CASCADE
+);
+
+ALTER TABLE IF EXISTS catering_tray_options
+  ADD COLUMN IF NOT EXISTS formula_id INT NULL,
+  ADD COLUMN IF NOT EXISTS custom_multiplier DECIMAL(10, 4) NULL;
+
+-- One-time migration of the old single category multiplier into a named formula.
+INSERT INTO catering_tray_category_formulas (category_id, label, multiplier, sort_order)
+SELECT c.id, 'Default', c.default_formula_multiplier, 1
+FROM catering_tray_categories c
+WHERE c.default_formula_multiplier IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM catering_tray_category_formulas f WHERE f.category_id = c.id
+  );
+
+-- =====================================================
 -- Admins Table
 -- =====================================================
 CREATE TABLE IF NOT EXISTS admins (

@@ -947,8 +947,9 @@ let mockCateringTrayOptions = [
   { id: 12, item_id: 6, tray_name: 'Full Tray', serves: '30', price: 130, sort_order: 2, is_active: 1 },
 ];
 
-let mockCateringTrayOrders = [];
-let mockCateringTraySettings = {
+let mockCateringTrayCategoryFormulas = [];
+let nextCateringTrayCategoryFormulaId = 1;
+let mockCateringTrayOrders = [];let mockCateringTraySettings = {
   minimum_amount: 0,
   maximum_order_size: 0,
   lead_time_hours: 24,
@@ -2779,6 +2780,81 @@ function boolNumber(value, fallback = 0) {
   return fallback;
 }
 
+function isBlankInput(value) {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+function parseFormulaMultiplier(value) {
+  if (isBlankInput(value)) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Number(parsed.toFixed(4));
+}
+
+function parseBasePrice(value) {
+  if (isBlankInput(value)) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Number(parsed.toFixed(2));
+}
+
+function calculateFormulaPrice(basePrice, formulaMultiplier) {
+  if (basePrice === null || formulaMultiplier === null) return null;
+  return Number((basePrice * formulaMultiplier).toFixed(2));
+}
+
+const MAX_CATEGORY_FORMULAS = 4;
+
+function parseFormulaId(value) {
+  if (isBlankInput(value)) return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function normalizeCategoryFormulaPayload(formulas) {
+  if (!Array.isArray(formulas)) return null;
+  const normalized = [];
+  for (const [index, formula] of formulas.entries()) {
+    const label = String(formula?.label || '').trim();
+    const multiplier = parseFormulaMultiplier(formula?.multiplier);
+    if (!label && multiplier === null) continue;
+    if (!label) return { error: 'Each category formula needs a label' };
+    if (multiplier === null) return { error: `Formula "${label}" must have a positive multiplier` };
+    normalized.push({
+      id: parseFormulaId(formula?.id),
+      label: label.slice(0, 120),
+      multiplier,
+      sort_order: Number(formula?.sort_order || index + 1),
+    });
+  }
+  if (normalized.length > MAX_CATEGORY_FORMULAS) {
+    return { error: `A category can have at most ${MAX_CATEGORY_FORMULAS} pricing formulas` };
+  }
+  return { formulas: normalized };
+}
+
+// Tray-level custom multiplier wins, then the selected category formula,
+// then the item-level legacy formula. Null means "keep the manual price".
+function resolveTrayOptionMultiplier(option = {}, formulaById = new Map(), itemFormulaMultiplier = null) {
+  const customMultiplier = parseFormulaMultiplier(option.custom_multiplier);
+  if (customMultiplier !== null) return customMultiplier;
+  const formulaId = parseFormulaId(option.formula_id);
+  if (formulaId !== null) {
+    const selectedMultiplier = parseFormulaMultiplier(formulaById.get(String(formulaId))?.multiplier);
+    if (selectedMultiplier !== null) return selectedMultiplier;
+  }
+  return itemFormulaMultiplier;
+}
+
+function applyFormulaPriceToOptions(options = [], basePrice, formulaById = new Map(), itemFormulaMultiplier = null) {
+  return options.map((option) => {
+    const multiplier = resolveTrayOptionMultiplier(option, formulaById, itemFormulaMultiplier);
+    const calculatedPrice = calculateFormulaPrice(basePrice, multiplier);
+    return calculatedPrice === null ? option : { ...option, price: calculatedPrice };
+  });
+}
+
 const cateringTrayStatusOptions = ['pending', 'confirmed', 'preparing', 'completed', 'cancelled'];
 
 function normalizeHostForLocation(value) {
@@ -2820,6 +2896,109 @@ function normalizeCateringTrayItem(row, options = []) {
   return item;
 }
 
+function normalizeCateringTrayCategory(row = {}, formulas = [], includePricingFields = false) {
+  const category = {
+    ...row,
+    is_active: boolNumber(row.is_active, 1),
+  };
+  if (includePricingFields) {
+    category.formulas = formulas
+      .filter((formula) => Number(formula.category_id) === Number(row.id))
+      .map((formula) => ({
+        id: Number(formula.id),
+        category_id: Number(formula.category_id),
+        label: String(formula.label || ''),
+        multiplier: parseFormulaMultiplier(formula.multiplier),
+        sort_order: Number(formula.sort_order || 1),
+      }))
+      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+  } else {
+    delete category.formulas;
+  }
+  delete category.default_formula_multiplier;
+  return category;
+}
+
+function normalizeCateringTrayItemWithCategory(row, options = [], categoryById = new Map(), includePricingFields = false) {
+  const item = normalizeCateringTrayItem(row, options);
+  const basePrice = parseBasePrice(row.base_price);
+  const itemFormulaMultiplier = parseFormulaMultiplier(row.item_formula_multiplier);
+  const formulaById = new Map((categoryById.get(String(row.category_id))?.formulas || []).map((formula) => [String(formula.id), formula]));
+
+  item.tray_options = item.tray_options.map((option) => {
+    const next = { ...option };
+    if (includePricingFields) {
+      next.formula_id = parseFormulaId(option.formula_id);
+      next.custom_multiplier = parseFormulaMultiplier(option.custom_multiplier);
+      next.effective_multiplier = resolveTrayOptionMultiplier(option, formulaById, itemFormulaMultiplier);
+    } else {
+      delete next.formula_id;
+      delete next.custom_multiplier;
+      delete next.effective_multiplier;
+    }
+    return next;
+  });
+
+  if (includePricingFields) {
+    item.base_price = basePrice;
+    item.item_formula_multiplier = itemFormulaMultiplier;
+  } else {
+    delete item.base_price;
+    delete item.item_formula_multiplier;
+  }
+  return item;
+}
+
+async function getCategoryFormulaMap(categoryId) {
+  if (!db) {
+    return new Map(
+      mockCateringTrayCategoryFormulas
+        .filter((formula) => Number(formula.category_id) === Number(categoryId))
+        .map((formula) => [String(formula.id), formula])
+    );
+  }
+  const [rows] = await db.query('SELECT * FROM catering_tray_category_formulas WHERE category_id = ?', [categoryId]);
+  return new Map(rows.map((formula) => [String(formula.id), formula]));
+}
+
+async function recalculateCategoryTrayOptionPrices(categoryId) {
+  const formulaById = await getCategoryFormulaMap(categoryId);
+
+  if (db) {
+    const [items] = await db.query('SELECT id, base_price, item_formula_multiplier FROM catering_tray_items WHERE category_id = ?', [categoryId]);
+    if (!items.length) return;
+    const [options] = await db.query('SELECT * FROM catering_tray_options WHERE item_id IN (?)', [items.map((item) => item.id)]);
+    for (const item of items) {
+      const basePrice = parseBasePrice(item.base_price);
+      if (basePrice === null) continue;
+      const itemFormulaMultiplier = parseFormulaMultiplier(item.item_formula_multiplier);
+      for (const option of options.filter((row) => Number(row.item_id) === Number(item.id))) {
+        const multiplier = resolveTrayOptionMultiplier(option, formulaById, itemFormulaMultiplier);
+        const price = calculateFormulaPrice(basePrice, multiplier);
+        if (price === null || Number(option.price) === price) continue;
+        await db.query('UPDATE catering_tray_options SET price = ? WHERE id = ?', [price, option.id]);
+      }
+    }
+    return;
+  }
+
+  const itemsById = new Map(
+    mockCateringTrayItems
+      .filter((item) => Number(item.category_id) === Number(categoryId))
+      .map((item) => [Number(item.id), item])
+  );
+  if (!itemsById.size) return;
+  mockCateringTrayOptions = mockCateringTrayOptions.map((option) => {
+    const item = itemsById.get(Number(option.item_id));
+    if (!item) return option;
+    const basePrice = parseBasePrice(item.base_price);
+    const multiplier = resolveTrayOptionMultiplier(option, formulaById, parseFormulaMultiplier(item.item_formula_multiplier));
+    const price = calculateFormulaPrice(basePrice, multiplier);
+    return price === null ? option : { ...option, price };
+  });
+}
+
+
 async function ensureCateringByTraySchema() {
   if (!db) return;
   await db.query(`
@@ -2828,6 +3007,7 @@ async function ensureCateringByTraySchema() {
       name VARCHAR(160) NOT NULL,
       slug VARCHAR(180) NOT NULL,
       description TEXT NULL,
+      default_formula_multiplier DECIMAL(10,4) NULL,
       sort_order INT NOT NULL DEFAULT 1,
       is_active TINYINT(1) NOT NULL DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -2843,6 +3023,8 @@ async function ensureCateringByTraySchema() {
       short_description TEXT NULL,
       long_description MEDIUMTEXT NULL,
       image_url MEDIUMTEXT NULL,
+      base_price DECIMAL(10,2) NULL,
+      item_formula_multiplier DECIMAL(10,4) NULL,
       sort_order INT NOT NULL DEFAULT 1,
       is_active TINYINT(1) NOT NULL DEFAULT 1,
       available TINYINT(1) NOT NULL DEFAULT 1,
@@ -2981,6 +3163,48 @@ async function ensureCateringByTraySchema() {
   if (!proportionalSizeColumn.length) {
     await db.query(`ALTER TABLE catering_tray_settings ADD COLUMN image_proportional_size INT NOT NULL DEFAULT 600`);
   }
+  const [categoryFormulaColumn] = await db.query(`SHOW COLUMNS FROM catering_tray_categories LIKE 'default_formula_multiplier'`);
+  if (!categoryFormulaColumn.length) {
+    await db.query(`ALTER TABLE catering_tray_categories ADD COLUMN default_formula_multiplier DECIMAL(10,4) NULL`);
+  }
+  const [itemBasePriceColumn] = await db.query(`SHOW COLUMNS FROM catering_tray_items LIKE 'base_price'`);
+  if (!itemBasePriceColumn.length) {
+    await db.query(`ALTER TABLE catering_tray_items ADD COLUMN base_price DECIMAL(10,2) NULL`);
+  }
+  const [itemFormulaColumn] = await db.query(`SHOW COLUMNS FROM catering_tray_items LIKE 'item_formula_multiplier'`);
+  if (!itemFormulaColumn.length) {
+    await db.query(`ALTER TABLE catering_tray_items ADD COLUMN item_formula_multiplier DECIMAL(10,4) NULL`);
+  }
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS catering_tray_category_formulas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      category_id INT NOT NULL,
+      label VARCHAR(120) NOT NULL,
+      multiplier DECIMAL(10,4) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_catering_tray_category_formulas_category (category_id),
+      CONSTRAINT fk_catering_tray_category_formula_category FOREIGN KEY (category_id) REFERENCES catering_tray_categories(id) ON DELETE CASCADE
+    )
+  `);
+  const [optionFormulaColumn] = await db.query(`SHOW COLUMNS FROM catering_tray_options LIKE 'formula_id'`);
+  if (!optionFormulaColumn.length) {
+    await db.query(`ALTER TABLE catering_tray_options ADD COLUMN formula_id INT NULL`);
+  }
+  const [optionCustomMultiplierColumn] = await db.query(`SHOW COLUMNS FROM catering_tray_options LIKE 'custom_multiplier'`);
+  if (!optionCustomMultiplierColumn.length) {
+    await db.query(`ALTER TABLE catering_tray_options ADD COLUMN custom_multiplier DECIMAL(10,4) NULL`);
+  }
+  // One-time migration of the legacy single category multiplier into a named formula.
+  await db.query(`
+    INSERT INTO catering_tray_category_formulas (category_id, label, multiplier, sort_order)
+    SELECT c.id, 'Default', c.default_formula_multiplier, 1
+    FROM catering_tray_categories c
+    WHERE c.default_formula_multiplier IS NOT NULL
+      AND c.default_formula_multiplier > 0
+      AND NOT EXISTS (SELECT 1 FROM catering_tray_category_formulas f WHERE f.category_id = c.id)
+  `);
   await db.query(`
     INSERT INTO catering_tray_settings (id, minimum_amount, maximum_order_size, lead_time_hours, tax_rate, currency, pickup_times, delivery_times, pause_catering_orders, image_disclaimer_enabled, image_disclaimer_text, image_resolution_mode, image_exact_width, image_exact_height, image_proportional_size)
     VALUES (1, 0, 0, 24, 0.1300, 'CAD', '11:30-21:30', '11:30-21:30', 0, 1, 'Images are for illustration purpose only', 'smart_crop', 600, 400, 600)
@@ -3000,6 +3224,9 @@ async function getCateringByTrayData(includeInactive = false, hostname = '') {
     const [items] = await db.query(`SELECT * FROM catering_tray_items ${itemWhere} ORDER BY sort_order ASC, name ASC`);
     const [options] = await db.query(`SELECT * FROM catering_tray_options ${includeInactive ? '' : 'WHERE is_active = 1'} ORDER BY sort_order ASC, id ASC`);
     const [settingsRows] = await db.query('SELECT * FROM catering_tray_settings WHERE id = 1 LIMIT 1');
+    const [categoryFormulas] = await db.query('SELECT * FROM catering_tray_category_formulas ORDER BY sort_order ASC, id ASC');
+    const normalizedCategories = categories.map((category) => normalizeCateringTrayCategory(category, categoryFormulas, includeInactive));
+    const categoryById = new Map(normalizedCategories.map((category) => [String(category.id), category]));
     let locations = publicCateringLocations(hostname);
     try {
       const [locationRows] = await db.query('SELECT id, id AS restaurant_id, slug AS location_slug, name AS restaurant_name, CONCAT_WS(", ", address, city, province_state) AS address, phone, email, website FROM restaurants WHERE is_active = 1 ORDER BY id');
@@ -3010,15 +3237,21 @@ async function getCateringByTrayData(includeInactive = false, hostname = '') {
       console.error('Catering locations fallback:', err.message);
     }
     return {
-      categories,
-      items: items.map((item) => normalizeCateringTrayItem(item, options)),
+      categories: normalizedCategories,
+      items: items.map((item) => normalizeCateringTrayItemWithCategory(item, options, categoryById, includeInactive)),
       settings: settingsRows[0] || mockCateringTraySettings,
       locations,
     };
   }
+  const normalizedMockCategories = mockCateringTrayCategories
+    .filter((category) => includeInactive || boolNumber(category.is_active, 1))
+    .map((category) => normalizeCateringTrayCategory(category, mockCateringTrayCategoryFormulas, includeInactive));
+  const categoryById = new Map(normalizedMockCategories.map((category) => [String(category.id), category]));
+  const mockItems = mockCateringTrayItems.filter((item) => includeInactive || (boolNumber(item.is_active, 1) && boolNumber(item.available, 1)));
+  const mockOptions = mockCateringTrayOptions.filter((option) => includeInactive || boolNumber(option.is_active, 1));
   return {
-    categories: [],
-    items: [],
+    categories: normalizedMockCategories,
+    items: mockItems.map((item) => normalizeCateringTrayItemWithCategory(item, mockOptions, categoryById, includeInactive)),
     settings: mockCateringTraySettings,
     locations: publicCateringLocations(hostname),
   };
@@ -3251,18 +3484,71 @@ app.get('/api/admin/catering-by-tray', authMiddleware, async (req, res) => {
   }
 });
 
+async function persistCategoryFormulas(categoryId, formulas) {
+  if (!Array.isArray(formulas)) return;
+  const keptIds = formulas.map((formula) => formula.id).filter((id) => id !== null);
+
+  if (db) {
+    if (keptIds.length) {
+      await db.query('DELETE FROM catering_tray_category_formulas WHERE category_id = ? AND id NOT IN (?)', [categoryId, keptIds]);
+    } else {
+      await db.query('DELETE FROM catering_tray_category_formulas WHERE category_id = ?', [categoryId]);
+    }
+    for (const formula of formulas) {
+      if (formula.id !== null) {
+        await db.query(
+          'UPDATE catering_tray_category_formulas SET label = ?, multiplier = ?, sort_order = ? WHERE id = ? AND category_id = ?',
+          [formula.label, formula.multiplier, formula.sort_order, formula.id, categoryId]
+        );
+      } else {
+        await db.query(
+          'INSERT INTO catering_tray_category_formulas (category_id, label, multiplier, sort_order) VALUES (?, ?, ?, ?)',
+          [categoryId, formula.label, formula.multiplier, formula.sort_order]
+        );
+      }
+    }
+    return;
+  }
+
+  mockCateringTrayCategoryFormulas = mockCateringTrayCategoryFormulas.filter(
+    (formula) => Number(formula.category_id) !== Number(categoryId) || keptIds.includes(Number(formula.id))
+  );
+  for (const formula of formulas) {
+    if (formula.id !== null) {
+      mockCateringTrayCategoryFormulas = mockCateringTrayCategoryFormulas.map((row) =>
+        Number(row.id) === Number(formula.id) ? { ...row, ...formula, category_id: Number(categoryId) } : row
+      );
+    } else {
+      mockCateringTrayCategoryFormulas.push({ ...formula, id: nextCateringTrayCategoryFormulaId++, category_id: Number(categoryId) });
+    }
+  }
+}
+
 app.post('/api/admin/catering-by-tray/categories', authMiddleware, async (req, res) => {
   try {
     const name = String(req.body?.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Category name is required' });
-    const category = { name, slug: slugify(req.body?.slug || name), description: req.body?.description || null, sort_order: Number(req.body?.sort_order || 1), is_active: boolNumber(req.body?.is_active, 1) };
+    const formulaResult = normalizeCategoryFormulaPayload(req.body?.formulas);
+    if (formulaResult?.error) return res.status(400).json({ error: formulaResult.error });
+    const category = {
+      name,
+      slug: slugify(req.body?.slug || name),
+      description: req.body?.description || null,
+      sort_order: Number(req.body?.sort_order || 1),
+      is_active: boolNumber(req.body?.is_active, 1),
+    };
     if (db) {
       await ensureCateringByTraySchema();
-      const [result] = await db.query('INSERT INTO catering_tray_categories (name, slug, description, sort_order, is_active) VALUES (?, ?, ?, ?, ?)', [category.name, category.slug, category.description, category.sort_order, category.is_active]);
+      const [result] = await db.query(
+        'INSERT INTO catering_tray_categories (name, slug, description, sort_order, is_active) VALUES (?, ?, ?, ?, ?)',
+        [category.name, category.slug, category.description, category.sort_order, category.is_active]
+      );
+      await persistCategoryFormulas(result.insertId, formulaResult?.formulas);
       return res.json({ id: result.insertId, ...category });
     }
     const row = { id: nextCateringTrayCategoryId++, ...category };
     mockCateringTrayCategories.push(row);
+    await persistCategoryFormulas(row.id, formulaResult?.formulas);
     return res.json(row);
   } catch (err) {
     console.error('Create catering tray category failed:', err);
@@ -3272,14 +3558,29 @@ app.post('/api/admin/catering-by-tray/categories', authMiddleware, async (req, r
 
 app.put('/api/admin/catering-by-tray/categories/:id', authMiddleware, async (req, res) => {
   try {
-    const category = { name: String(req.body?.name || '').trim(), slug: slugify(req.body?.slug || req.body?.name), description: req.body?.description || null, sort_order: Number(req.body?.sort_order || 1), is_active: boolNumber(req.body?.is_active, 1) };
+    const formulaResult = normalizeCategoryFormulaPayload(req.body?.formulas);
+    if (formulaResult?.error) return res.status(400).json({ error: formulaResult.error });
+    const category = {
+      name: String(req.body?.name || '').trim(),
+      slug: slugify(req.body?.slug || req.body?.name),
+      description: req.body?.description || null,
+      sort_order: Number(req.body?.sort_order || 1),
+      is_active: boolNumber(req.body?.is_active, 1),
+    };
     if (!category.name) return res.status(400).json({ error: 'Category name is required' });
     if (db) {
       await ensureCateringByTraySchema();
-      await db.query('UPDATE catering_tray_categories SET name = ?, slug = ?, description = ?, sort_order = ?, is_active = ? WHERE id = ?', [category.name, category.slug, category.description, category.sort_order, category.is_active, req.params.id]);
+      await db.query(
+        'UPDATE catering_tray_categories SET name = ?, slug = ?, description = ?, sort_order = ?, is_active = ? WHERE id = ?',
+        [category.name, category.slug, category.description, category.sort_order, category.is_active, req.params.id]
+      );
+      await persistCategoryFormulas(Number(req.params.id), formulaResult?.formulas);
+      await recalculateCategoryTrayOptionPrices(Number(req.params.id));
       return res.json({ id: Number(req.params.id), ...category });
     }
     mockCateringTrayCategories = mockCateringTrayCategories.map((row) => Number(row.id) === Number(req.params.id) ? { ...row, ...category } : row);
+    await persistCategoryFormulas(Number(req.params.id), formulaResult?.formulas);
+    await recalculateCategoryTrayOptionPrices(Number(req.params.id));
     return res.json({ id: Number(req.params.id), ...category });
   } catch (err) {
     console.error('Update catering tray category failed:', err);
@@ -3312,6 +3613,7 @@ app.delete('/api/admin/catering-by-tray/categories/:id', authMiddleware, async (
       }
     }
     mockCateringTrayCategories = mockCateringTrayCategories.filter((row) => Number(row.id) !== Number(req.params.id));
+    mockCateringTrayCategoryFormulas = mockCateringTrayCategoryFormulas.filter((row) => Number(row.category_id) !== Number(req.params.id));
     mockCateringTrayItems = mockCateringTrayItems.filter((row) => Number(row.category_id) !== Number(req.params.id));
     mockCateringTrayOptions = mockCateringTrayOptions.filter((option) => mockCateringTrayItems.some((item) => Number(item.id) === Number(option.item_id)));
     return res.json({ success: true });
@@ -3329,6 +3631,8 @@ function buildCateringTrayItemPayload(body = {}) {
     short_description: body.short_description || null,
     long_description: body.long_description || null,
     image_url: body.image_url || null,
+    base_price: parseBasePrice(body.base_price),
+    item_formula_multiplier: parseFormulaMultiplier(body.item_formula_multiplier),
     sort_order: Number(body.sort_order || 1),
     is_active: boolNumber(body.is_active, 1),
     available: boolNumber(body.available, 1),
@@ -3339,6 +3643,8 @@ function buildCateringTrayItemPayload(body = {}) {
     tray_name: String(option.tray_name || '').trim(),
     serves: String(option.serves ?? '').trim(),
     price: Number(option.price || 0),
+    formula_id: parseFormulaId(option.formula_id),
+    custom_multiplier: parseFormulaMultiplier(option.custom_multiplier),
     sort_order: Number(option.sort_order || index + 1),
     is_active: boolNumber(option.is_active, 1),
   })).filter((option) => option.tray_name) : [];
@@ -3349,32 +3655,48 @@ async function saveCateringTrayItem(req, res, id = null) {
   try {
     const item = buildCateringTrayItemPayload(req.body);
     if (!item.name || !item.category_id) return res.status(400).json({ error: 'Item name and category are required' });
+    if (!isBlankInput(req.body?.base_price) && item.base_price === null) {
+      return res.status(400).json({ error: 'Base price must be a non-negative number' });
+    }
+    if (!isBlankInput(req.body?.item_formula_multiplier) && item.item_formula_multiplier === null) {
+      return res.status(400).json({ error: 'Item formula multiplier must be a positive number' });
+    }
+    if (item.item_formula_multiplier !== null && item.base_price === null) {
+      return res.status(400).json({ error: 'Base price is required when item formula multiplier is set' });
+    }
     if (item.tray_options.some((option) => option.serves.length > 50)) {
       return res.status(400).json({ error: 'Tray serves value must be 50 characters or less' });
     }
-    const values = [item.category_id, item.name, item.short_description, item.long_description, item.image_url, item.sort_order, item.is_active, item.available, item.vegetarian, item.vegan, item.can_be_made_vegan, item.gluten_free, item.contains_nuts, item.spicy, item.recommended, item.chef_special, item.best_seller, item.popular, item.kids_friendly, item.halal];
+    const values = [item.category_id, item.name, item.short_description, item.long_description, item.image_url, item.base_price, item.item_formula_multiplier, item.sort_order, item.is_active, item.available, item.vegetarian, item.vegan, item.can_be_made_vegan, item.gluten_free, item.contains_nuts, item.spicy, item.recommended, item.chef_special, item.best_seller, item.popular, item.kids_friendly, item.halal];
     let itemId = id;
     if (db) {
       await ensureCateringByTraySchema();
+      const formulaById = await getCategoryFormulaMap(item.category_id);
+      const trayOptionsToSave = applyFormulaPriceToOptions(item.tray_options, item.base_price, formulaById, item.item_formula_multiplier);
       if (id) {
         await db.query(
-          `UPDATE catering_tray_items SET category_id = ?, name = ?, short_description = ?, long_description = ?, image_url = ?, sort_order = ?, is_active = ?, available = ?, vegetarian = ?, vegan = ?, can_be_made_vegan = ?, gluten_free = ?, contains_nuts = ?, spicy = ?, recommended = ?, chef_special = ?, best_seller = ?, popular = ?, kids_friendly = ?, halal = ? WHERE id = ?`,
+          `UPDATE catering_tray_items SET category_id = ?, name = ?, short_description = ?, long_description = ?, image_url = ?, base_price = ?, item_formula_multiplier = ?, sort_order = ?, is_active = ?, available = ?, vegetarian = ?, vegan = ?, can_be_made_vegan = ?, gluten_free = ?, contains_nuts = ?, spicy = ?, recommended = ?, chef_special = ?, best_seller = ?, popular = ?, kids_friendly = ?, halal = ? WHERE id = ?`,
           [...values, id]
         );
         await db.query('DELETE FROM catering_tray_options WHERE item_id = ?', [id]);
       } else {
         const [result] = await db.query(
-          `INSERT INTO catering_tray_items (category_id, name, short_description, long_description, image_url, sort_order, is_active, available, vegetarian, vegan, can_be_made_vegan, gluten_free, contains_nuts, spicy, recommended, chef_special, best_seller, popular, kids_friendly, halal)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO catering_tray_items (category_id, name, short_description, long_description, image_url, base_price, item_formula_multiplier, sort_order, is_active, available, vegetarian, vegan, can_be_made_vegan, gluten_free, contains_nuts, spicy, recommended, chef_special, best_seller, popular, kids_friendly, halal)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           values
         );
         itemId = result.insertId;
       }
-      for (const option of item.tray_options) {
-        await db.query('INSERT INTO catering_tray_options (item_id, tray_name, serves, price, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)', [itemId, option.tray_name, option.serves, option.price, option.sort_order, option.is_active]);
+      for (const option of trayOptionsToSave) {
+        await db.query(
+          'INSERT INTO catering_tray_options (item_id, tray_name, serves, price, formula_id, custom_multiplier, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [itemId, option.tray_name, option.serves, option.price, option.formula_id, option.custom_multiplier, option.sort_order, option.is_active]
+        );
       }
-      return res.json({ id: Number(itemId), ...item });
+      return res.json({ id: Number(itemId), ...item, tray_options: trayOptionsToSave });
     }
+    const formulaById = await getCategoryFormulaMap(item.category_id);
+    const trayOptionsToSave = applyFormulaPriceToOptions(item.tray_options, item.base_price, formulaById, item.item_formula_multiplier);
     if (id) {
       mockCateringTrayItems = mockCateringTrayItems.map((row) => Number(row.id) === Number(id) ? { ...row, ...item, id: Number(id) } : row);
       mockCateringTrayOptions = mockCateringTrayOptions.filter((option) => Number(option.item_id) !== Number(id));
@@ -3383,8 +3705,8 @@ async function saveCateringTrayItem(req, res, id = null) {
       itemId = nextCateringTrayItemId++;
       mockCateringTrayItems.push({ id: itemId, ...item });
     }
-    item.tray_options.forEach((option) => mockCateringTrayOptions.push({ id: nextCateringTrayOptionId++, item_id: itemId, ...option }));
-    return res.json({ id: itemId, ...item });
+    trayOptionsToSave.forEach((option) => mockCateringTrayOptions.push({ id: nextCateringTrayOptionId++, item_id: itemId, ...option }));
+    return res.json({ id: itemId, ...item, tray_options: trayOptionsToSave });
   } catch (err) {
     console.error('Save catering tray item failed:', err);
     return res.status(500).json({ error: 'Unable to save item' });
