@@ -1,0 +1,21 @@
+name: Test VPS SSH
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H server.bdotsoftware.co.in >> ~/.ssh/known_hosts
+
+      - name: Test VPS connection
+        run: |
+          ssh -i ~/.ssh/id_ed25519 root@server.bdotsoftware.co.in \
+            "echo 'GitHub Actions SSH connection successful'"
