@@ -1,10 +1,13 @@
-name: Test VPS SSH
+name: Deploy Masakali Ottawa
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  test-ssh:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,7 +18,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H server.bdotsoftware.co.in >> ~/.ssh/known_hosts
 
-      - name: Test VPS connection
+      - name: Deploy to VPS
         run: |
-          ssh -i ~/.ssh/id_ed25519 root@server.bdotsoftware.co.in \
-            "echo 'GitHub Actions SSH connection successful'"
+          ssh -i ~/.ssh/id_ed25519 deploy@server.bdotsoftware.co.in \
+            "sudo /usr/local/sbin/masakali-deploy"
