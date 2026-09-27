@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { MapPin, Phone, Mail, Globe, Clock, ExternalLink } from 'lucide-react';
 import api from '../api';
+import {
+  buildTelHref, formatLocationAddress, formatPhoneDisplay, getCountryLocations, getDirectionsUrl,
+  getLocationImageUrl, getOpeningHoursLines, getWebsiteLabel, getWebsiteUrl, isLocationNew,
+} from '../utils/locationHelpers';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
@@ -14,6 +18,7 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
   );
 }
 
+// Fallback header styling when a location has no image_url.
 const locationImages = {
   wellington: 'from-amber-900/30 to-red-900/20',
   stittsville: 'from-emerald-900/30 to-amber-900/20',
@@ -22,68 +27,64 @@ const locationImages = {
   restobar: 'from-violet-900/30 to-amber-900/20',
 };
 
-const locationDetails = {
-  wellington: { hours: 'Mon-Sun: 11:30 AM - 10:00 PM', maps: 'https://maps.google.com/?q=1111+Wellington+St+W+Ottawa+ON+K1Y+1P1' },
-  stittsville: { hours: 'Mon-Sun: 11:30 AM - 10:00 PM', maps: 'https://maps.google.com/?q=5507+Hazeldean+Rd+Unit+C3-1+Stittsville+ON+K2S+0P5', badge: 'Main Branch' },
-  montreal: { hours: 'Mon-Sun: 12:00 PM - 10:00 PM', maps: 'https://maps.google.com/?q=1015+Sherbrooke+St+W+Montreal+Quebec+H3A+1G5', badge: 'New' },
-  rangde: { hours: 'Mon-Sun: 11:30 AM - 10:00 PM', maps: 'https://maps.google.com/?q=700+March+Rd+Unit+H+Kanata+ON+K2K+2V9' },
-  restobar: { hours: 'Mon-Thu: 4:00 PM - 12:00 AM, Fri-Sun: 12:00 PM - 2:00 AM', maps: 'https://maps.google.com/?q=97+Clarence+St+Ottawa+ON+K1N+5P9' },
-};
-
-function normalizeCountry(country = '') {
-  const value = String(country).trim().toLowerCase();
-  if (value.includes('canada')) return 'Canada';
-  if (value === 'usa' || value === 'us' || value.includes('united states')) return 'USA';
-  return country || 'Other';
-}
-
-function normalizePhoneDigits(value) {
-  return String(value || '').replace(/\D/g, '');
-}
-
-function formatPhoneDisplay(value) {
-  const digits = normalizePhoneDigits(value);
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+function getBadges(location) {
+  const badges = [];
+  if (location.badge_label) {
+    badges.push({ label: location.badge_label, className: location.badge_label === 'Main Branch' ? 'bg-amber-500 text-black' : 'bg-purple-500 text-white' });
   }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return String(value || '').trim();
+  if (isLocationNew(location)) badges.push({ label: 'New', className: 'bg-blue-500 text-white' });
+  return badges;
 }
 
-function buildTelNumber(value) {
-  const digits = normalizePhoneDigits(value);
-  if (!digits) return '';
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (digits.length === 10) return `+1${digits}`;
-  return `+${digits}`;
-}
+function LocationCardImage({ location }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = getLocationImageUrl(location);
+  const gradient = locationImages[location.slug] || 'from-amber-900/20 to-neutral-900';
+  const showImage = imageUrl && !imageFailed;
+  const badges = getBadges(location);
 
-function getDisplayPhone(restaurant) {
-  const slug = String(restaurant?.slug || '').toLowerCase();
-  const city = String(restaurant?.city || '').toLowerCase();
-  if (slug === 'california' || slug === 'cupertino' || city.includes('cupertino')) return '(408) 352-5097';
-  return formatPhoneDisplay(restaurant?.phone);
+  return (
+    <div className={`h-48 bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
+      {showImage ? (
+        <>
+          <img
+            src={imageUrl}
+            alt={location.name || location.brand || 'Masakali location'}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-black/20" />
+        </>
+      ) : (
+        <MapPin size={48} className="text-white/10 group-hover:text-white/20 transition-colors" />
+      )}
+      {badges.length > 0 && (
+        <div className="absolute top-4 right-4 flex flex-wrap justify-end gap-2">
+          {badges.map((badge) => (
+            <span key={badge.label} className={`text-xs font-bold px-3 py-1 rounded-full shadow-sm ${badge.className}`}>
+              {badge.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Locations() {
-  const [restaurants, setRestaurants] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const groupedRestaurants = restaurants.reduce((groups, restaurant) => {
-    const country = normalizeCountry(restaurant.country);
-    if (!groups[country]) groups[country] = [];
-    groups[country].push(restaurant);
-    return groups;
-  }, {});
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    api.getRestaurants().then(data => {
-      setRestaurants(data);
+    api.getLocations().then(data => {
+      setCountries(Array.isArray(data?.countries) ? data.countries : []);
       setLoading(false);
-    }).catch(err => { console.error(err); setLoading(false); });
+    }).catch(err => { console.error(err); setLoadError(true); setLoading(false); });
   }, []);
+
+  const visibleCountries = countries.filter((country) => getCountryLocations(country).length > 0);
 
   return (
     <div className="min-h-screen pt-20 relative">
@@ -128,100 +129,91 @@ export default function Locations() {
             </div>
           ) : (
             <>
-              {['Canada', 'USA'].map((country, countryIndex) => {
-                const countryLocations = groupedRestaurants[country] || [];
-                if (!countryLocations.length) return null;
+              {visibleCountries.length === 0 && (
+                <p className="text-center text-neutral-500 dark:text-neutral-400 py-12">
+                  {loadError ? 'We could not load our locations right now. Please try again shortly.' : 'Locations will be announced soon.'}
+                </p>
+              )}
+              {visibleCountries.map((country, countryIndex) => {
+                const countryLocations = getCountryLocations(country);
 
                 return (
-                  <AnimatedSection key={country} delay={countryIndex * 0.1} className="mb-12 last:mb-0">
+                  <AnimatedSection key={country.id || country.name} delay={countryIndex * 0.1} className="mb-12 last:mb-0">
                     <div className="flex items-center gap-3 mb-5">
-                      <h2 className="font-display text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">{country}</h2>
+                      <h2 className="font-display text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">{country.name}</h2>
                       <span className="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                         {countryLocations.length} Location{countryLocations.length > 1 ? 's' : ''}
                       </span>
                     </div>
 
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {countryLocations
-                        .sort((a, b) => {
-                          if (a.slug === 'stittsville') return -1;
-                          if (b.slug === 'stittsville') return 1;
-                          return 0;
-                        })
-                        .map((restaurant, i) => {
-                          const details = locationDetails[restaurant.slug] || {};
-                          const gradient = locationImages[restaurant.slug] || 'from-amber-900/20 to-neutral-900';
-                          return (
-                            <AnimatedSection key={restaurant.id} delay={i * 0.08}>
-                              <div className="group bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover h-full flex flex-col shadow-sm dark:shadow-none">
-                                <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
-                                  <MapPin size={48} className="text-white/10 group-hover:text-white/20 transition-colors" />
-                                  {details.badge && (
-                                    <span className={`absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full ${
-                                      details.badge === 'Main Branch' ? 'bg-amber-500 text-black' :
-                                      details.badge === 'New' ? 'bg-blue-500 text-white' :
-                                      'bg-purple-500 text-white'
-                                    }`}>
-                                      {details.badge}
-                                    </span>
-                                  )}
-                                </div>
+                      {countryLocations.map((restaurant, i) => {
+                        const displayPhone = formatPhoneDisplay(restaurant.phone);
+                        const hoursLines = getOpeningHoursLines(restaurant);
+                        const directionsUrl = getDirectionsUrl(restaurant);
+                        const websiteUrl = getWebsiteUrl(restaurant);
+                        return (
+                          <AnimatedSection key={restaurant.id || restaurant.slug || i} delay={i * 0.08}>
+                            <div className="group bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden card-hover gold-glow-hover h-full flex flex-col shadow-sm dark:shadow-none">
+                              <LocationCardImage location={restaurant} />
 
-                                <div className="p-6 flex-1 flex flex-col">
-                                  <h3 className="text-neutral-900 dark:text-white font-semibold text-xl mb-1">{restaurant.name || restaurant.brand}</h3>
-                                  <p className="text-amber-500 dark:text-amber-400/80 text-sm font-medium mb-4">{restaurant.brand}</p>
+                              <div className="p-6 flex-1 flex flex-col">
+                                <h3 className="text-neutral-900 dark:text-white font-semibold text-xl mb-1">{restaurant.name || restaurant.brand}</h3>
+                                <p className="text-amber-500 dark:text-amber-400/80 text-sm font-medium mb-4">{restaurant.brand}</p>
 
-                                  <div className="space-y-3 mb-6 flex-1">
-                                    <div className="flex items-start gap-3">
-                                      <MapPin size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
-                                      <span className="text-neutral-500 dark:text-neutral-400 text-sm">{restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}</span>
+                                <div className="space-y-3 mb-6 flex-1">
+                                  <div className="flex items-start gap-3">
+                                    <MapPin size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
+                                    <span className="text-neutral-500 dark:text-neutral-400 text-sm">{formatLocationAddress(restaurant)}</span>
+                                  </div>
+                                  {displayPhone && (
+                                    <div className="flex items-center gap-3">
+                                      <Phone size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                                      <a href={buildTelHref(displayPhone)} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{displayPhone}</a>
                                     </div>
-                                    {getDisplayPhone(restaurant) && (
-                                      <div className="flex items-center gap-3">
-                                        <Phone size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
-                                        <a href={`tel:${buildTelNumber(getDisplayPhone(restaurant))}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{getDisplayPhone(restaurant)}</a>
-                                      </div>
-                                    )}
-                                    {restaurant.email && (
-                                      <div className="flex items-center gap-3">
-                                        <Mail size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
-                                        <a href={`mailto:${restaurant.email}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors">{restaurant.email}</a>
-                                      </div>
-                                    )}
-                                    {details.hours && (
-                                      <div className="flex items-start gap-3">
-                                        <Clock size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
-                                        <span className="text-neutral-500 dark:text-neutral-400 text-sm">{details.hours}</span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="flex gap-3">
-                                    <Link to="/reservations" className="flex-1 text-center px-4 py-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all">
-                                      Reserve
-                                    </Link>
-                                    <Link to="/menu" className="flex-1 text-center px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all">
-                                      View Menu
-                                    </Link>
-                                  </div>
-
-                                  {details.maps && (
-                                    <a href={details.maps} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
-                                      <MapPin size={12} /> Directions
-                                    </a>
                                   )}
-
-                                  {restaurant.website && (
-                                    <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
-                                      <Globe size={12} /> {restaurant.website.replace('https://', '')}
-                                      <ExternalLink size={10} />
-                                    </a>
+                                  {restaurant.email && (
+                                    <div className="flex items-center gap-3">
+                                      <Mail size={16} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                                      <a href={`mailto:${restaurant.email}`} className="text-neutral-500 dark:text-neutral-400 text-sm hover:text-amber-500 dark:hover:text-amber-400 transition-colors break-all">{restaurant.email}</a>
+                                    </div>
+                                  )}
+                                  {hoursLines.length > 0 && (
+                                    <div className="flex items-start gap-3">
+                                      <Clock size={16} className="text-neutral-400 dark:text-neutral-500 mt-0.5 flex-shrink-0" />
+                                      <div className="text-neutral-500 dark:text-neutral-400 text-sm space-y-0.5">
+                                        {hoursLines.map((line) => <div key={line}>{line}</div>)}
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
+
+                                <div className="flex gap-3">
+                                  <Link to="/reservations" className="flex-1 text-center px-4 py-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all">
+                                    Reserve
+                                  </Link>
+                                  <Link to="/menu" className="flex-1 text-center px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all">
+                                    View Menu
+                                  </Link>
+                                </div>
+
+                                {directionsUrl && (
+                                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
+                                    <MapPin size={12} /> Directions
+                                  </a>
+                                )}
+
+                                {websiteUrl && (
+                                  <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
+                                    <Globe size={12} /> {getWebsiteLabel(restaurant)}
+                                    <ExternalLink size={10} />
+                                  </a>
+                                )}
                               </div>
-                            </AnimatedSection>
-                          );
-                        })}
+                            </div>
+                          </AnimatedSection>
+                        );
+                      })}
                     </div>
                   </AnimatedSection>
                 );

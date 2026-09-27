@@ -4,6 +4,7 @@ import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { useRef } from 'react';
 import { ArrowRight, MapPin, Star, Users, CalendarDays, ChefHat, Sparkles, Clock, Quote } from 'lucide-react';
 import api from '../api';
+import { formatLocationAddress, formatPhoneDisplay, getCountryLocations } from '../utils/locationHelpers';
 
 // Restaurant images for hero slideshow
 //import imgMonterial from '../assets/restaurant-images/monterial.webp';
@@ -89,35 +90,6 @@ const stats = [
   { icon: Star, value: '4.8', label: 'Avg Rating' },
 ];
 
-function normalizeCountry(country = '') {
-  const value = String(country).trim().toLowerCase();
-  if (value.includes('canada')) return 'Canada';
-  if (value === 'usa' || value === 'us' || value.includes('united states')) return 'USA';
-  return country || 'Other';
-}
-
-function normalizePhoneDigits(value) {
-  return String(value || '').replace(/\D/g, '');
-}
-
-function formatPhoneDisplay(value) {
-  const digits = normalizePhoneDigits(value);
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return String(value || '').trim();
-}
-
-function getDisplayPhone(restaurant) {
-  const slug = String(restaurant?.slug || '').toLowerCase();
-  const city = String(restaurant?.city || '').toLowerCase();
-  if (slug === 'california' || slug === 'cupertino' || city.includes('cupertino')) return '(408) 352-5097';
-  return formatPhoneDisplay(restaurant?.phone);
-}
-
 function getFeaturedDishImage(item) {
   if (!item) return null;
 
@@ -135,22 +107,15 @@ function getFeaturedDishImage(item) {
 export default function Home() {
   const [featuredItems, setFeaturedItems] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
-  const [restaurants, setRestaurants] = useState([]);
+  const [locationCountries, setLocationCountries] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
-
-  const groupedLocations = restaurants.reduce((groups, restaurant) => {
-    const country = normalizeCountry(restaurant.country);
-    if (!groups[country]) groups[country] = [];
-    groups[country].push(restaurant);
-    return groups;
-  }, {});
 
   useEffect(() => {
     const loadHomepageContent = async () => {
       const [featuredResult, testimonialResult, restaurantsResult] = await Promise.allSettled([
         api.getFeaturedDishes(),
         api.getTestimonials(),
-        api.getRestaurants(),
+        api.getLocations(),
       ]);
 
       if (featuredResult.status === 'fulfilled') {
@@ -166,7 +131,7 @@ export default function Home() {
       }
 
       if (restaurantsResult.status === 'fulfilled') {
-        setRestaurants(restaurantsResult.value || []);
+        setLocationCountries(Array.isArray(restaurantsResult.value?.countries) ? restaurantsResult.value.countries : []);
       } else {
         console.error(restaurantsResult.reason);
       }
@@ -509,12 +474,13 @@ export default function Home() {
             </h2>
           </AnimatedSection>
 
-          {['Canada', 'USA'].map((country, countryIndex) => {
-            const countryLocations = groupedLocations[country] || [];
+          {locationCountries.map((countryGroup, countryIndex) => {
+            const country = countryGroup.name;
+            const countryLocations = getCountryLocations(countryGroup);
             if (!countryLocations.length) return null;
 
             return (
-              <AnimatedSection key={country} delay={countryIndex * 0.1} className="mb-10 last:mb-0">
+              <AnimatedSection key={countryGroup.id || country} delay={countryIndex * 0.1} className="mb-10 last:mb-0">
                 <div className="flex items-center gap-3 mb-5">
                   <h3 className="font-display text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">{country}</h3>
                   <span className="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -536,11 +502,11 @@ export default function Home() {
                           </div>
                         </div>
                         <p className="text-neutral-500 text-sm">
-                          {restaurant.address}, {restaurant.city}, {restaurant.province_state}, {restaurant.country}
+                          {formatLocationAddress(restaurant)}
                         </p>
-                        {getDisplayPhone(restaurant) && (
+                        {formatPhoneDisplay(restaurant.phone) && (
                           <p className="text-neutral-500 text-sm mt-2">
-                            Phone: {getDisplayPhone(restaurant)}
+                            Phone: {formatPhoneDisplay(restaurant.phone)}
                           </p>
                         )}
                       </div>
