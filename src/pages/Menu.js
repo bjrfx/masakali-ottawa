@@ -310,9 +310,9 @@ export default function Menu() {
                                   <Leaf size={12} /> Veg
                                 </span>
                               )}
-                              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 ${spice.bg} ${spice.text} rounded-full`}>
+                              {/* <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 ${spice.bg} ${spice.text} rounded-full`}>
                                 <Flame size={12} /> {spice.label}
-                              </span>
+                              </span> */}
                             </div>
                           </div>
                         </AnimatedSection>
