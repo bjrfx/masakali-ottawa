@@ -2782,6 +2782,9 @@ app.post('/api/reservations', async (req, res) => {
   }
 
   const { restaurant_id, name, email, phone, date, time, persons, special_requests, geolocation } = req.body;
+  if (restaurant_id && date && await isReservationBlocked({ restaurantId: restaurant_id, date, time })) {
+    return res.status(400).json({ error: 'Reservations are closed for the selected day/service period.' });
+  }
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = normalizeReservationPhone(phone);
   const parsedGeolocation = parseReservationGeolocation(geolocation);
