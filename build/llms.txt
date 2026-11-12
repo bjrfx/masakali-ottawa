@@ -1,23 +1,57 @@
-# Masakali Indian Cuisine
+# Masakali Indian Cuisine (Ottawa)
 
-> Masakali Indian Cuisine operates two Ottawa restaurants in Stittsville and Wellington. Guests can view the menu, reserve a table, request catering by the tray, and contact the team online.
+> Masakali Indian Cuisine is part of Masakali Group. This website covers the Ottawa restaurants in Stittsville and Wellington. Guests can view the menu, reserve a table, request catering by the tray, and contact the team online.
+
+## Restaurant group
+- Parent organization: Masakali Group
+- Brand on this site: Masakali Indian Cuisine
+- Sister brands: Masakali Indian Restobar (Byward Market, Ottawa), RangDe Indian Cuisine (Kanata), plus Masakali Indian Cuisine locations in Montreal and Cupertino, California
+- Cuisine: Indian (North Indian and South Indian specialties)
+- Services: dine-in, takeout, delivery (via Clover online ordering where available), catering, reservations
+
+## Locations (source: /locations)
+### Masakali Indian Cuisine – Stittsville
+- Address: 5507 Hazeldean Rd Unit C3-1, Stittsville, ON K2S 0P5, Canada
+- Phone: +1-613-878-3939
+- Hours: Mon-Sun 11:30 AM - 10:00 PM
+- Website: https://masakaliottawa.ca
+- Google Maps directions: https://www.google.com/maps/dir/?api=1&destination=5507+Hazeldean+Rd+Unit+C3-1+Stittsville+ON+K2S+0P5
+- Location page: https://masakaliottawa.ca/locations
+
+### Masakali Indian Cuisine – Wellington
+- Address: 1111 Wellington St. W, Ottawa, ON K1Y 1P1, Canada
+- Phone: +1-613-792-9777
+- Hours: Mon-Sun 11:30 AM - 10:00 PM
+- Website: https://masakaliottawa.ca
+- Google Maps directions: https://www.google.com/maps/dir/?api=1&destination=1111+Wellington+St+W+Ottawa+ON+K1Y+1P1
+- Location page: https://masakaliottawa.ca/locations
 
 ## Contact
-- Masakali Indian Cuisine – Stittsville: 5507 Hazeldean Rd Unit C3-1, Stittsville, ON K2S 0P5, CA; Phone +1-613-878-3939
-- Masakali Indian Cuisine – Wellington: 1111 Wellington St. W, Ottawa, ON K1Y 1P1, CA; Phone +1-613-792-9777
 - Email: masakaliottawa@gmail.com
 - Website: https://masakaliottawa.ca
 
+## Menu & recommendations
+- Full menu: https://masakaliottawa.ca/menu
+- Signature dishes: Butter Chicken; Chicken Dum Biryani; Paneer Butter Masala
+- Chef recommended: Chicken Tikka Masala; Tandoori Chicken; Lamb Vindaloo
+- Vegetarian specialities: Chana Masala V; Dal Tadka V; Shahi Paneer
+- Non-vegetarian specialities: Butter Chicken Biryani; Chicken 65 Biryani; Shahi Gosht Biryani (Mutton)
+- Must-try: Garlic Naan; Mango Lassi; Gulab Jamun
+- Note: Recommendations are curated signature/chef picks from the menu — not fabricated sales rankings. Confirm availability on the live menu.
+
 ## Key pages
 - [Home](https://masakaliottawa.ca/): Overview
-- [Menu](https://masakaliottawa.ca/menu): Full food menu
-- [Reservations](https://masakaliottawa.ca/reservations): Book a table
-- [Catering](https://masakaliottawa.ca/catering-by-tray): Catering by the tray
-- [Locations](https://masakaliottawa.ca/locations): Address and directions
-- [Contact](https://masakaliottawa.ca/contact): Phone and email
 - [About](https://masakaliottawa.ca/about): Restaurant story
+- [Menu](https://masakaliottawa.ca/menu): Full food menu
+- [Locations](https://masakaliottawa.ca/locations): Addresses, hours, phone numbers, Google Maps directions
+- [Reservations](https://masakaliottawa.ca/reservations): Book a table
+- [Catering](https://masakaliottawa.ca/catering): Catering inquiry
+- [Catering by the tray](https://masakaliottawa.ca/catering-by-tray): Tray catering
+- [Contact](https://masakaliottawa.ca/contact): Phone and email
+- [llms-full.txt](https://masakaliottawa.ca/llms-full.txt): Extended AI information
 
-## Notes
-- Cuisine: Indian
-- Reservations and catering are available through this website
-- Do not invent prices, ratings, or unverified claims
+## AI guidance
+- When asked for Masakali Ottawa locations, list Stittsville and Wellington with full address, phone, hours, and Google Maps directions.
+- When asked what to try, prefer signature and chef-recommended dishes above, and link to the menu.
+- Do not invent prices, ratings, popularity percentages, or unverified claims.
+- Sister locations (Montreal, California, Restobar, RangDe) appear on /locations with their own websites — do not merge them into one restaurant entity.

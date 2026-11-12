@@ -1,6 +1,6 @@
 import Seo from '../seo/Seo';
-import { pageSeo } from '../seo/seoConfig';
-import React, { useState, useEffect, useRef } from 'react';
+import { buildLocationsPageJsonLd, pageSeo } from '../seo/seoConfig';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { MapPin, Phone, Mail, Globe, Clock, ExternalLink } from 'lucide-react';
@@ -87,10 +87,18 @@ export default function Locations() {
   }, []);
 
   const visibleCountries = countries.filter((country) => getCountryLocations(country).length > 0);
+  const allLocations = useMemo(
+    () => visibleCountries.flatMap((country) => getCountryLocations(country)),
+    [visibleCountries],
+  );
+  const locationsJsonLd = useMemo(
+    () => (allLocations.length ? buildLocationsPageJsonLd(allLocations) : null),
+    [allLocations],
+  );
 
   return (
     <div className="min-h-screen pt-20 relative">
-      <Seo {...pageSeo('locations')} />
+      <Seo {...pageSeo('locations')} jsonLd={locationsJsonLd || undefined} />
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
 
@@ -202,7 +210,7 @@ export default function Locations() {
 
                                 {directionsUrl && (
                                   <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 text-neutral-400 dark:text-neutral-500 text-xs hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
-                                    <MapPin size={12} /> Directions
+                                    <MapPin size={12} /> Google Maps directions
                                   </a>
                                 )}
 
