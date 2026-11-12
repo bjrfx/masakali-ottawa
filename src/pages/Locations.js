@@ -9,6 +9,7 @@ import {
   buildTelHref, formatLocationAddress, formatPhoneDisplay, getCountryLocations, getDirectionsUrl,
   getLocationImageUrl, getOpeningHoursLines, getWebsiteLabel, getWebsiteUrl, isLocationNew,
 } from '../utils/locationHelpers';
+import { filterSiteLocations } from '../config/siteLocations';
 
 function AnimatedSection({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
@@ -86,19 +87,37 @@ export default function Locations() {
     }).catch(err => { console.error(err); setLoadError(true); setLoading(false); });
   }, []);
 
-  const visibleCountries = countries.filter((country) => getCountryLocations(country).length > 0);
   const allLocations = useMemo(
-    () => visibleCountries.flatMap((country) => getCountryLocations(country)),
-    [visibleCountries],
+    () => countries.flatMap((country) => getCountryLocations(country)),
+    [countries],
+  );
+  const siteLocations = useMemo(() => filterSiteLocations(allLocations), [allLocations]);
+  const siteSlugSet = useMemo(
+    () => new Set(siteLocations.map((loc) => String(loc.slug || loc.location_slug || loc.id))),
+    [siteLocations],
+  );
+  const sisterLocations = useMemo(
+    () => allLocations.filter((loc) => !siteSlugSet.has(String(loc.slug || loc.location_slug || loc.id))),
+    [allLocations, siteSlugSet],
   );
   const locationsJsonLd = useMemo(
-    () => (allLocations.length ? buildLocationsPageJsonLd(allLocations) : null),
-    [allLocations],
+    () => (siteLocations.length ? buildLocationsPageJsonLd(siteLocations) : null),
+    [siteLocations],
   );
+  const visibleSiteCountries = useMemo(() => {
+    return countries
+      .map((country) => ({
+        ...country,
+        locations: getCountryLocations(country).filter((loc) =>
+          siteSlugSet.has(String(loc.slug || loc.location_slug || loc.id))
+        ),
+      }))
+      .filter((country) => (country.locations || []).length > 0);
+  }, [countries, siteSlugSet]);
 
   return (
     <div className="min-h-screen pt-20 relative">
-      <Seo {...pageSeo('locations')} jsonLd={locationsJsonLd || undefined} />
+      <Seo {...pageSeo('locations')} jsonLd={locationsJsonLd || undefined} breadcrumbs={[{ name: 'Home', path: '/' }, { name: 'Locations', path: '/locations' }]} />
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
 
@@ -109,14 +128,13 @@ export default function Locations() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl" />
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <AnimatedSection>
-            <span className="text-amber-500 dark:text-amber-400 text-sm font-semibold uppercase tracking-wider">Our Locations</span>
+            <span className="text-amber-500 dark:text-amber-400 text-sm font-semibold uppercase tracking-wider">Ottawa</span>
             <div className="section-divider !mx-0" />
             <h1 className="font-display text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mt-4 mb-4">
-              Find a <span className="text-gold-gradient">Masakali</span> Near You
+              Our <span className="text-gold-gradient">Ottawa</span> Locations
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 text-lg max-w-2xl">
-              Discover our locations across Canada and the USA,
-              each serving authentic Indian cuisine with warm hospitality.
+              Visit Masakali Indian Cuisine in Stittsville and Wellington — authentic Indian dining, reservations, and catering in Ottawa.
             </p>
           </AnimatedSection>
         </div>
@@ -140,13 +158,13 @@ export default function Locations() {
             </div>
           ) : (
             <>
-              {visibleCountries.length === 0 && (
+              {visibleSiteCountries.length === 0 && sisterLocations.length === 0 && (
                 <p className="text-center text-neutral-500 dark:text-neutral-400 py-12">
                   {loadError ? 'We could not load our locations right now. Please try again shortly.' : 'Locations will be announced soon.'}
                 </p>
               )}
-              {visibleCountries.map((country, countryIndex) => {
-                const countryLocations = getCountryLocations(country);
+              {visibleSiteCountries.map((country, countryIndex) => {
+                const countryLocations = country.locations || getCountryLocations(country);
 
                 return (
                   <AnimatedSection key={country.id || country.name} delay={countryIndex * 0.1} className="mb-12 last:mb-0">
@@ -229,6 +247,47 @@ export default function Locations() {
                   </AnimatedSection>
                 );
               })}
+
+              {sisterLocations.length > 0 && (
+                <AnimatedSection className="mt-16">
+                  <h2 className="font-display text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-3">
+                    Sister restaurants
+                  </h2>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-8 max-w-2xl">
+                    Other Masakali Group restaurants. Visit each brand&apos;s website for menus and reservations.
+                  </p>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {sisterLocations.map((restaurant, i) => {
+                      const websiteUrl = getWebsiteUrl(restaurant);
+                      const directionsUrl = getDirectionsUrl(restaurant);
+                      return (
+                        <div key={restaurant.id || restaurant.slug || i} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 shadow-sm dark:shadow-none">
+                          <h3 className="text-neutral-900 dark:text-white font-semibold text-lg mb-1">{restaurant.name || restaurant.brand}</h3>
+                          <p className="text-neutral-500 text-sm mb-4">{formatLocationAddress(restaurant)}</p>
+                          <div className="flex flex-wrap gap-3">
+                            {websiteUrl ? (
+                              <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1">
+                                Visit website <ExternalLink size={12} />
+                              </a>
+                            ) : null}
+                            {directionsUrl ? (
+                              <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-500 hover:text-amber-500 inline-flex items-center gap-1">
+                                Directions <MapPin size={12} />
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </AnimatedSection>
+              )}
+              <AnimatedSection className="mt-12 text-center flex flex-wrap justify-center gap-4">
+                <Link to="/reservations" className="btn-gold">Reserve a table</Link>
+                <Link to="/contact" className="btn-outline-gold">Contact us</Link>
+                <Link to="/menu" className="btn-outline-gold">View menu</Link>
+              </AnimatedSection>
+
             </>
           )}
         </div>

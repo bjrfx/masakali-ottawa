@@ -108,7 +108,7 @@ function VideoPlayer({ src }) {
 export default function About() {
   return (
     <div className="min-h-screen pt-20 relative">
-      <Seo {...pageSeo('about')} />
+      <Seo {...pageSeo('about')} breadcrumbs={[{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }]} />
       {/* Indian ornamental overlays */}
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
@@ -126,9 +126,7 @@ export default function About() {
               The Story of <span className="text-gold-gradient">Masakali</span>
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 text-lg leading-relaxed">
-              What began as a dream in 2021 has grown into one of Canada's most exciting 
-              Indian restaurant groups. Masakali is more than a restaurant — it's a celebration 
-              of culture, flavor, and community.
+              Masakali Indian Cuisine began in Ottawa in 2021 and now welcomes guests at Stittsville (5507 Hazeldean Rd Unit C3-1) and Wellington (1111 Wellington St. W). We serve classic Indian curries, biryani, tandoor specialties, and vegetarian dishes — with reservations and catering for the Ottawa area.
             </p>
           </AnimatedSection>
         </div>
@@ -364,9 +362,20 @@ export default function About() {
             <h2 className="font-display text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-6">
               Come Be a Part of Our Story
             </h2>
-            <Link to="/reservations" className="btn-gold text-lg">
-              Reserve Your Table <ArrowRight size={18} className="ml-2" />
-            </Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/reservations" className="btn-gold text-lg">
+                Reserve Your Table <ArrowRight size={18} className="ml-2" />
+              </Link>
+              <Link to="/menu" className="btn-outline-gold text-lg">
+                View Menu <ArrowRight size={18} className="ml-2" />
+              </Link>
+              <Link to="/locations" className="btn-outline-gold text-lg">
+                Locations <ArrowRight size={18} className="ml-2" />
+              </Link>
+              <Link to="/contact" className="btn-outline-gold text-lg">
+                Contact <ArrowRight size={18} className="ml-2" />
+              </Link>
+            </div>
           </AnimatedSection>
         </div>
       </section>

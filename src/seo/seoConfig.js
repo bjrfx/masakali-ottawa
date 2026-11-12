@@ -16,6 +16,7 @@ export const siteSeo = {
   ogLocale: "en_CA",
   htmlLang: 'en',
   cuisine: "Indian",
+  priceCurrency: "CAD",
   priceRange: "$$",
   email: "masakaliottawa@gmail.com",
   servesCuisine: ["Indian", "North Indian", "South Indian"],
@@ -345,7 +346,7 @@ export function buildLocationsPageJsonLd(locations = []) {
     '@type': 'ItemList',
     '@id': `${absoluteUrl('/locations')}#location-list`,
     name: `${siteSeo.siteName} restaurant locations`,
-    description: 'Active Masakali Group restaurant locations listed on this website, with addresses, phone numbers, hours, and Google Maps directions.',
+    description: `${siteSeo.siteName} locations on this website, with addresses, phone numbers, hours, and Google Maps directions.`,
     numberOfItems: restaurants.length,
     itemListElement: restaurants.map((restaurant, index) => ({
       '@type': 'ListItem',
@@ -386,7 +387,7 @@ export function buildRecommendedDishesJsonLd() {
       '@type': 'ItemList',
       '@id': `${absoluteUrl('/menu')}#recommended-dishes`,
       name: `${siteSeo.siteName} recommended dishes`,
-      description: 'Signature, chef-recommended, vegetarian, and must-try dishes curated from the Masakali menu. Not a sales ranking.',
+      description: 'Signature, chef-recommended, vegetarian, and must-try dishes curated from the restaurant menu. Not a sales ranking.',
       numberOfItems: dishes.length,
       itemListElement: dishes.map((dish, index) => ({
         '@type': 'ListItem',
@@ -432,7 +433,7 @@ export function buildMenuItemJsonLd(item, path) {
     image: item.image_url || item.imageUrl || undefined,
     offers: item.price != null && item.price !== '' ? {
       '@type': 'Offer',
-      priceCurrency: "CAD",
+      priceCurrency: siteSeo.priceCurrency || 'CAD',
       price: String(item.price),
       availability: 'https://schema.org/InStock',
     } : undefined,

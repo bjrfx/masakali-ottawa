@@ -1,6 +1,7 @@
 import Seo from '../seo/Seo';
 import { pageSeo, siteFaqs } from '../seo/seoConfig';
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send, Loader2, Check, MessageSquare } from 'lucide-react';
 
@@ -60,7 +61,7 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen pt-20 relative">
-      <Seo {...pageSeo('contact')} faqs={siteFaqs} />
+      <Seo {...pageSeo('contact')} faqs={siteFaqs} breadcrumbs={[{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }]} />
       <div className="indian-mandala-tl" /><div className="indian-mandala-br" />
 
       {/* Hero */}
@@ -72,6 +73,12 @@ export default function Contact() {
             <div className="section-divider !mx-0" />
             <h1 className="font-display text-5xl md:text-6xl font-bold text-neutral-900 dark:text-white mt-4 mb-4">Get in <span className="text-gold-gradient">Touch</span></h1>
             <p className="text-neutral-600 dark:text-neutral-400 text-lg max-w-2xl">Have a question, feedback, or just want to say hello? We'd love to hear from you.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/reservations" className="btn-gold">Reserve a table</Link>
+              <Link to="/menu" className="btn-outline-gold">View menu</Link>
+              <Link to="/locations" className="btn-outline-gold">Locations</Link>
+              <Link to="/catering-by-tray" className="btn-outline-gold">Catering</Link>
+            </div>
           </AnimatedSection>
         </div>
       </section>
@@ -84,7 +91,7 @@ export default function Contact() {
             {/* Contact Info */}
             <div className="space-y-6">
               {[
-                { icon: MapPin, title: 'Our Locations', lines: ['5507 Hazeldean Rd, Stittsville, ON', '1111 Wellington St. W, Ottawa, ON'] },
+                { icon: MapPin, title: 'Our Locations', lines: ['5507 Hazeldean Rd Unit C3-1, Stittsville, ON', '1111 Wellington St. W, Ottawa, ON'] },
                 { icon: Phone, title: 'Phone', lines: ['Wellington (613) 792-9777','Stittsville (613) 878-3939'] },
                 { icon: Mail, title: 'Email', lines: ['masakaliottawa@gmail.com'] },
                 { icon: Clock, title: 'Hours', lines: ['Open Daily: 11:30 AM - 10:00 PM', 'For both Ottawa branches'] },

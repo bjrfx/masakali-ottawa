@@ -11,7 +11,7 @@ const footerLinks = {
   ],
   services: [
     { name: 'Reserve a Table', path: '/reservations' },
-    { name: 'Catering Services', path: '/catering' },
+    { name: 'Catering Services', path: '/catering-by-tray' },
     { name: 'Contact Us', path: '/contact' },
     // { name: 'Admin Portal', path: '/admin/login' },
   ],
@@ -20,7 +20,7 @@ const footerLinks = {
 const brands = [
   { name: 'Masakali Stittsville', url: 'https://masakaliottawa.ca' },
   { name: 'Masakali Wellington', url: 'https://masakaliottawa.ca/locations' },
-  { name: 'Masakali Restobar', url: 'https://masakalirestrobar.ca' },
+  { name: 'Masakali Restobar', url: 'https://masakalirestobar.ca' },
   { name: 'RangDe Ottawa', url: 'https://rangdeottawa.ca' },
   { name: 'Masakali California, USA', url: 'https://masakalicalifornia.com' },
 ];
@@ -38,6 +38,7 @@ export default function Footer() {
                 src="/logo/Masakali-Indian-Cuisine.svg"
                 alt="Masakali"
                 className="h-40 w-auto"
+                width="180" height="160" decoding="async"
                 onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
               />
               <span className="hidden font-display text-2xl text-gold-gradient font-bold">Masakali</span>
@@ -127,8 +128,7 @@ export default function Footer() {
             © {new Date().getFullYear()} Masakali Restaurant Group. All rights reserved.
           </p>
           <p className="text-neutral-400 dark:text-neutral-600 text-xs">
-            Est. 2021 · Ottawa · Stittsville · Wellington
-          </p>
+            Est. 2021 · Stittsville & Wellington, Ottawa</p>
         </div>
       </div>
     </footer>
