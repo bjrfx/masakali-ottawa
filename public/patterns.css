@@ -15,6 +15,28 @@
   to { transform: var(--mt, none) rotate(360deg); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .indian-mandala-tl,
+  .indian-mandala-br {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .indian-mandala-tl,
+  .indian-mandala-br {
+    width: 420px;
+    height: 420px;
+    animation: indianGlow 8s ease-in-out infinite;
+    filter: blur(0.5px) brightness(0.55);
+  }
+
+  .dark body,
+  :root:not(.dark) body {
+    background-attachment: scroll, scroll;
+  }
+}
+
 /* — PREMIUM MANDALA CORNER ORNAMENTS — */
 .indian-mandala-tl,
 .indian-mandala-br {
@@ -200,7 +222,7 @@
   background-size: 900px 900px, 80px 80px;
   background-position: center 200px, 0 0;
   background-repeat: no-repeat, repeat;
-  background-attachment: fixed, fixed;
+  background-attachment: scroll, scroll;
 }
 :root:not(.dark) body {
   background-image:
@@ -208,7 +230,16 @@
   background-size: 80px 80px;
   background-position: 0 0;
   background-repeat: repeat;
-  background-attachment: fixed;
+  background-attachment: scroll;
+}
+
+@media (min-width: 1024px) {
+  .dark body {
+    background-attachment: fixed, fixed;
+  }
+  :root:not(.dark) body {
+    background-attachment: fixed;
+  }
 }
 
 /* — RICH SECTION PATTERN — Floral Medallion — */

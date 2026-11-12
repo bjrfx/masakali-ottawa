@@ -1,3 +1,5 @@
+import Seo from '../seo/Seo';
+import { pageSeo } from '../seo/seoConfig';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
@@ -43,36 +45,64 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
 
 function HeroSlideshow() {
   const [current, setCurrent] = useState(0);
+  const [loaded, setLoaded] = useState(() => new Set([0, 1]));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrent(prev => (prev + 1) % heroImages.length);
+      setCurrent((prev) => {
+        const next = (prev + 1) % heroImages.length;
+        setLoaded((prevLoaded) => {
+          if (prevLoaded.has(next) && prevLoaded.has((next + 1) % heroImages.length)) {
+            return prevLoaded;
+          }
+          const nextLoaded = new Set(prevLoaded);
+          nextLoaded.add(next);
+          nextLoaded.add((next + 1) % heroImages.length);
+          return nextLoaded;
+        });
+        return next;
+      });
     }, 5000);
     return () => clearInterval(timer);
   }, []);
 
+  const goToSlide = (index) => {
+    setLoaded((prevLoaded) => {
+      const nextLoaded = new Set(prevLoaded);
+      nextLoaded.add(index);
+      nextLoaded.add((index + 1) % heroImages.length);
+      return nextLoaded;
+    });
+    setCurrent(index);
+  };
+
   return (
     <>
-      {heroImages.map((src, i) => (
-        <div
-          key={i}
-          className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
-          style={{ opacity: i === current ? 1 : 0 }}
-        >
-          <img
-            src={src}
-            alt=""
-            className="w-full h-full object-cover"
-            loading={i < 2 ? 'eager' : 'lazy'}
-          />
-        </div>
-      ))}
+      {heroImages.map((src, i) => {
+        if (!loaded.has(i)) return null;
+        return (
+          <div
+            key={i}
+            className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
+            style={{ opacity: i === current ? 1 : 0 }}
+          >
+            <img
+              src={src}
+              alt="Restaurant dining ambiance"
+              className="w-full h-full object-cover"
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              fetchPriority={i === 0 ? 'high' : 'low'}
+            />
+          </div>
+        );
+      })}
       {/* Progress dots */}
       <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 flex gap-2">
         {heroImages.map((_, i) => (
           <button
             key={i}
-            onClick={() => setCurrent(i)}
+            onClick={() => goToSlide(i)}
             className={`w-2 h-2 rounded-full transition-all duration-500 ${i === current ? 'bg-amber-400 w-6' : 'bg-white/30 hover:bg-white/50'
               }`}
             aria-label={`Slide ${i + 1}`}
@@ -90,39 +120,21 @@ const stats = [
   { icon: Star, value: '4.8', label: 'Avg Rating' },
 ];
 
-function getFeaturedDishImage(item) {
-  if (!item) return null;
-
-  const fromImagesArray = Array.isArray(item.images)
-    ? (item.images[0]?.source || item.images[0]?.url || item.images[0]?.imageUrl || item.images[0]?.image_url)
-    : null;
-
-  const source = item.image_url || item.imageUrl || fromImagesArray || null;
-  if (!source) return null;
-
-  if (typeof source === 'string' && source.startsWith('//')) return `https:${source}`;
-  return source;
-}
-
 export default function Home() {
-  const [featuredItems, setFeaturedItems] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [locationCountries, setLocationCountries] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadHomepageContent = async () => {
-      const [featuredResult, testimonialResult, restaurantsResult] = await Promise.allSettled([
-        api.getFeaturedDishes(),
+      const [testimonialResult, restaurantsResult] = await Promise.allSettled([
         api.getTestimonials(),
         api.getLocations(),
       ]);
 
-      if (featuredResult.status === 'fulfilled') {
-        setFeaturedItems((featuredResult.value || []).slice(0, 6));
-      } else {
-        console.error(featuredResult.reason);
-      }
+      if (cancelled) return;
 
       if (testimonialResult.status === 'fulfilled') {
         setTestimonials((testimonialResult.value || []).slice(0, 6));
@@ -138,12 +150,21 @@ export default function Home() {
     };
 
     loadHomepageContent();
-    const interval = setInterval(loadHomepageContent, 8000);
-    return () => clearInterval(interval);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadHomepageContent();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   return (
     <div className="min-h-screen relative">
+      <Seo {...pageSeo('home')} />
       {/* Indian ornamental overlays */}
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
