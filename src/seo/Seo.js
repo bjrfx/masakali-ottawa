@@ -23,12 +23,17 @@ export default function Seo({
   breadcrumbs,
   hreflang = [],
   faqs,
+  /** When true, keep ?query in canonical (needed when query changes meaningful content). */
+  keepQuery = false,
 }) {
   const location = useLocation();
   // Self-referencing canonical from the current route (never hardcode homepage).
-  // Strip query/hash so variants like ?location= do not create duplicate canonicals.
+  // Default: strip query/hash. Opt in with keepQuery when params change page content
+  // (e.g. Ottawa dish pages require ?location=stittsville|wellington).
   const rawPath = path || location.pathname || '/';
-  const resolvedPath = String(rawPath).split('?')[0].split('#')[0] || '/';
+  const resolvedPath = keepQuery
+    ? (String(rawPath).split('#')[0] || '/')
+    : (String(rawPath).split('?')[0].split('#')[0] || '/');
   const pageTitle = title || siteSeo.defaultTitle;
   const pageDescription = description || siteSeo.defaultDescription;
   const canonical = absoluteUrl(resolvedPath);

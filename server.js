@@ -97,6 +97,107 @@ function slugifySeoName(text) {
     .slice(0, 80) || 'item';
 }
 
+/** Ottawa Clover menu branches — must match cloverMenu `locations[].key`. */
+const OTTAWA_MENU_LOCATION_KEYS = new Set(['stittsville', 'wellington']);
+
+function escapeXmlText(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function toSitemapLastmod(value) {
+  if (!value) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeOttawaMenuLocation(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return OTTAWA_MENU_LOCATION_KEYS.has(key) ? key : '';
+}
+
+function buildLocationMenuItemUrl(item, locationKey) {
+  if (!item?.id || !item?.name || !locationKey) return '';
+  return `${SEO_SITE_URL}/menu/${slugifySeoName(item.name)}-${item.id}?location=${encodeURIComponent(locationKey)}`;
+}
+
+/**
+ * Emit one sitemap URL per dish×location from clover_menu_cache.
+ * Skips locally hidden items/categories so URLs match the public menu API.
+ */
+async function addOttawaLocationMenuUrls(addUrl) {
+  if (!db) return;
+
+  const hiddenItemsByLoc = new Map();
+  const hiddenCatsByLoc = new Map();
+  try {
+    const [hiddenItems] = await db.query(
+      'SELECT location_key, clover_item_id FROM clover_item_visibility WHERE is_hidden = 1'
+    );
+    (hiddenItems || []).forEach((row) => {
+      const loc = normalizeOttawaMenuLocation(row.location_key);
+      if (!loc) return;
+      if (!hiddenItemsByLoc.has(loc)) hiddenItemsByLoc.set(loc, new Set());
+      hiddenItemsByLoc.get(loc).add(String(row.clover_item_id));
+    });
+  } catch (_) { /* visibility table may not exist yet */ }
+
+  try {
+    const [hiddenCats] = await db.query(
+      'SELECT location_key, clover_category_id FROM clover_category_settings WHERE is_hidden = 1'
+    );
+    (hiddenCats || []).forEach((row) => {
+      const loc = normalizeOttawaMenuLocation(row.location_key);
+      if (!loc) return;
+      if (!hiddenCatsByLoc.has(loc)) hiddenCatsByLoc.set(loc, new Set());
+      hiddenCatsByLoc.get(loc).add(String(row.clover_category_id));
+    });
+  } catch (_) { /* settings table may not exist yet */ }
+
+  let cacheRows = [];
+  try {
+    const [rows] = await db.query(
+      'SELECT location_key, payload, updated_at, synced_at FROM clover_menu_cache'
+    );
+    cacheRows = rows || [];
+  } catch (_) {
+    try {
+      const [rows] = await db.query('SELECT location_key, payload, synced_at FROM clover_menu_cache');
+      cacheRows = rows || [];
+    } catch (__) {
+      return;
+    }
+  }
+
+  cacheRows.forEach((row) => {
+    const locationKey = normalizeOttawaMenuLocation(row.location_key);
+    if (!locationKey) return;
+
+    let payload;
+    try {
+      payload = JSON.parse(row.payload || '{}');
+    } catch (_) {
+      return;
+    }
+
+    const lastmod = toSitemapLastmod(row.updated_at || row.synced_at || payload.synced_at);
+    const hiddenItems = hiddenItemsByLoc.get(locationKey) || new Set();
+    const hiddenCats = hiddenCatsByLoc.get(locationKey) || new Set();
+
+    (payload.items || []).forEach((item) => {
+      if (!item?.id || !item?.name) return;
+      if (hiddenItems.has(String(item.id))) return;
+      if (item.category_id && hiddenCats.has(String(item.category_id))) return;
+      const locUrl = buildLocationMenuItemUrl(item, locationKey);
+      if (locUrl) addUrl(locUrl, lastmod);
+    });
+  });
+}
+
 function sendPublicTextFile(res, fileName, contentType) {
   const candidates = [
     path.join(__dirname, 'build', fileName),
@@ -270,64 +371,13 @@ app.get('/sitemap.xml', async (req, res) => {
       addUrl(`${SEO_SITE_URL}${p === '/' ? '/' : p}`);
     });
 
-    if (db) {
-      try {
-        const [rows] = await db.query(
-          'SELECT id, name, updated_at FROM menu_items WHERE is_available IS NULL OR is_available = 1 LIMIT 5000'
-        );
-        (rows || []).forEach((row) => {
-          if (!row?.id || !row?.name) return;
-          const lastmod = row.updated_at ? new Date(row.updated_at) : null;
-          addUrl(
-            `${SEO_SITE_URL}/menu/${slugifySeoName(row.name)}-${row.id}`,
-            lastmod && !Number.isNaN(lastmod.getTime()) ? lastmod.toISOString().slice(0, 10) : undefined
-          );
-        });
-      } catch (err) {
-        // Menu table may be unavailable or lack updated_at; keep static URLs only.
-        try {
-          const [rows] = await db.query('SELECT id, name FROM menu_items WHERE is_available IS NULL OR is_available = 1 LIMIT 5000');
-          (rows || []).forEach((row) => {
-            if (!row?.id || !row?.name) return;
-            addUrl(`${SEO_SITE_URL}/menu/${slugifySeoName(row.name)}-${row.id}`);
-          });
-        } catch (_) { /* ignore */ }
-      }
-      try {
-        const [cacheRows] = await db.query('SELECT payload, updated_at FROM clover_menu_cache');
-        (cacheRows || []).forEach((row) => {
-          try {
-            const payload = JSON.parse(row.payload || '{}');
-            const cacheMod = row.updated_at ? new Date(row.updated_at) : null;
-            const lastmod = cacheMod && !Number.isNaN(cacheMod.getTime())
-              ? cacheMod.toISOString().slice(0, 10)
-              : undefined;
-            (payload.items || []).forEach((item) => {
-              if (!item?.id || !item?.name) return;
-              addUrl(`${SEO_SITE_URL}/menu/${slugifySeoName(item.name)}-${item.id}`, lastmod);
-            });
-          } catch (_) { /* ignore bad cache rows */ }
-        });
-      } catch (err) {
-        // Clover cache table may not exist yet or lack updated_at.
-        try {
-          const [cacheRows] = await db.query('SELECT payload FROM clover_menu_cache');
-          (cacheRows || []).forEach((row) => {
-            try {
-              const payload = JSON.parse(row.payload || '{}');
-              (payload.items || []).forEach((item) => {
-                if (!item?.id || !item?.name) return;
-                addUrl(`${SEO_SITE_URL}/menu/${slugifySeoName(item.name)}-${item.id}`);
-              });
-            } catch (_) { /* ignore */ }
-          });
-        } catch (_) { /* ignore */ }
-      }
-    }
+    // Dish URLs must include ?location=stittsville|wellington — the public
+    // menu item API is location-scoped and location-less URLs do not resolve.
+    await addOttawaLocationMenuUrls(addUrl);
 
     const urlXml = [...entries.entries()].map(([loc, meta]) => {
-      const lastmodTag = meta.lastmod ? `\n    <lastmod>${meta.lastmod}</lastmod>` : '';
-      return `  <url>\n    <loc>${loc}</loc>${lastmodTag}\n    <changefreq>weekly</changefreq>\n  </url>`;
+      const lastmodTag = meta.lastmod ? `\n    <lastmod>${escapeXmlText(meta.lastmod)}</lastmod>` : '';
+      return `  <url>\n    <loc>${escapeXmlText(loc)}</loc>${lastmodTag}\n    <changefreq>weekly</changefreq>\n  </url>`;
     }).join('\n');
     const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlXml}\n</urlset>\n`;
     res.type('application/xml').send(body);
@@ -5865,11 +5915,17 @@ function isKnownSpaRoute(pathname) {
   return SPA_PREFIXES.some((prefix) => raw.startsWith(prefix) || normalized.startsWith(prefix));
 }
 
-async function publicMenuItemExists(itemId) {
+async function publicMenuItemExists(itemId, locationKey = '') {
   if (!itemId || !db) return null;
+  const loc = normalizeOttawaMenuLocation(locationKey);
   try {
-    const [cacheRows] = await db.query('SELECT payload FROM clover_menu_cache');
+    const [cacheRows] = loc
+      ? await db.query('SELECT location_key, payload FROM clover_menu_cache WHERE location_key = ? LIMIT 1', [loc])
+      : await db.query('SELECT location_key, payload FROM clover_menu_cache');
     for (const row of cacheRows || []) {
+      const rowLoc = normalizeOttawaMenuLocation(row.location_key);
+      if (loc && rowLoc !== loc) continue;
+      if (!rowLoc) continue;
       try {
         const payload = JSON.parse(row.payload || '{}');
         if ((payload.items || []).some((item) => String(item?.id) === String(itemId))) {
@@ -5877,7 +5933,10 @@ async function publicMenuItemExists(itemId) {
         }
       } catch (_) { /* ignore */ }
     }
+    // Location was specified but item was not in that branch cache.
+    if (loc) return false;
   } catch (_) { /* cache unavailable */ }
+  if (loc) return false;
   try {
     const [rows] = await db.query(
       'SELECT id FROM menu_items WHERE CAST(id AS CHAR) = ? AND (is_available IS NULL OR is_available = 1) LIMIT 1',
@@ -5902,7 +5961,7 @@ app.get('*', async (req, res) => {
     if (!itemId) {
       return sendSpaNotFound(res, indexHtml, pathname);
     }
-    const exists = await publicMenuItemExists(itemId);
+    const exists = await publicMenuItemExists(itemId, req.query.location);
     if (exists === false) {
       return sendSpaNotFound(res, indexHtml, pathname);
     }

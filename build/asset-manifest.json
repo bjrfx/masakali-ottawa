@@ -1,10 +1,10 @@
 {
   "files": {
     "main.css": "/static/css/main.e78e982e.css",
-    "main.js": "/static/js/main.0c62bb1f.js",
+    "main.js": "/static/js/main.f47b0a5e.js",
     "static/js/727.2b39f990.chunk.js": "/static/js/727.2b39f990.chunk.js",
     "static/js/704.d5153c1a.chunk.js": "/static/js/704.d5153c1a.chunk.js",
-    "static/js/993.055d8373.chunk.js": "/static/js/993.055d8373.chunk.js",
+    "static/js/993.0c294343.chunk.js": "/static/js/993.0c294343.chunk.js",
     "static/js/871.2dca7e24.chunk.js": "/static/js/871.2dca7e24.chunk.js",
     "static/js/48.5f8c94b8.chunk.js": "/static/js/48.5f8c94b8.chunk.js",
     "static/js/529.df4b4d63.chunk.js": "/static/js/529.df4b4d63.chunk.js",
@@ -45,10 +45,10 @@
     "static/media/doordash.png": "/static/media/doordash.e6826744598759304e0b.png",
     "index.html": "/index.html",
     "main.e78e982e.css.map": "/static/css/main.e78e982e.css.map",
-    "main.0c62bb1f.js.map": "/static/js/main.0c62bb1f.js.map",
+    "main.f47b0a5e.js.map": "/static/js/main.f47b0a5e.js.map",
     "727.2b39f990.chunk.js.map": "/static/js/727.2b39f990.chunk.js.map",
     "704.d5153c1a.chunk.js.map": "/static/js/704.d5153c1a.chunk.js.map",
-    "993.055d8373.chunk.js.map": "/static/js/993.055d8373.chunk.js.map",
+    "993.0c294343.chunk.js.map": "/static/js/993.0c294343.chunk.js.map",
     "871.2dca7e24.chunk.js.map": "/static/js/871.2dca7e24.chunk.js.map",
     "48.5f8c94b8.chunk.js.map": "/static/js/48.5f8c94b8.chunk.js.map",
     "529.df4b4d63.chunk.js.map": "/static/js/529.df4b4d63.chunk.js.map",
@@ -79,6 +79,6 @@
   },
   "entrypoints": [
     "static/css/main.e78e982e.css",
-    "static/js/main.0c62bb1f.js"
+    "static/js/main.f47b0a5e.js"
   ]
 }

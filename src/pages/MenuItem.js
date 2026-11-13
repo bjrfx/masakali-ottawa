@@ -63,13 +63,16 @@ export default function MenuItem() {
 
   const item = data?.item;
   const dishMissing = !loading && (!!error || !item);
-  const menuBack = data?.location_key
-    ? `/menu?location=${encodeURIComponent(data.location_key)}`
-    : (locationKey ? `/menu?location=${encodeURIComponent(locationKey)}` : '/menu');
+  const effectiveLocation = data?.location_key || locationKey || '';
+  const menuBack = effectiveLocation
+    ? `/menu?location=${encodeURIComponent(effectiveLocation)}`
+    : '/menu';
+  // Location changes dish content (price/availability/related) — keep it in the URL/canonical.
   const path = item
-    ? `${menuItemPath(item)}${data?.location_key ? `?location=${encodeURIComponent(data.location_key)}` : ''}`
-    : `/menu/${itemSlug}`;
-  const canonicalPath = path.split('?')[0];
+    ? `${menuItemPath(item)}${effectiveLocation ? `?location=${encodeURIComponent(effectiveLocation)}` : ''}`
+    : (effectiveLocation
+      ? `/menu/${itemSlug}?location=${encodeURIComponent(effectiveLocation)}`
+      : `/menu/${itemSlug}`);
   const title = item
     ? `${item.name} | ${siteSeo.brandShort} | ${siteSeo.areaServed}`
     : `Menu Item | ${siteSeo.brandShort}`;
@@ -84,16 +87,17 @@ export default function MenuItem() {
       <Seo
         title={dishMissing ? `Dish unavailable | ${siteSeo.brandShort}` : title}
         description={description.slice(0, 160)}
-        path={canonicalPath}
+        path={path}
+        keepQuery={Boolean(effectiveLocation)}
         image={item?.image_url || undefined}
         type="article"
         noindex={dishMissing}
         breadcrumbs={[
           { name: 'Home', path: '/' },
-          { name: 'Menu', path: '/menu' },
-          { name: item?.name || 'Dish', path: canonicalPath },
+          { name: 'Menu', path: menuBack },
+          { name: item?.name || 'Dish', path },
         ]}
-        jsonLd={item ? buildMenuItemJsonLd(item, canonicalPath) : null}
+        jsonLd={item ? buildMenuItemJsonLd(item, path) : null}
       />
       <div className="indian-mandala-tl" />
       <div className="indian-mandala-br" />
